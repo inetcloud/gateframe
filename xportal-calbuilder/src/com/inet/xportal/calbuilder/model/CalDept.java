@@ -26,6 +26,7 @@ package com.inet.xportal.calbuilder.model;
 public class CalDept {
 	private String uuid;
 	private String name;
+	// who will be acted calendar builder role
 	private String ownerCode;
 
 	public String getUuid() {

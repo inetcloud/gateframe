@@ -20,6 +20,8 @@ import java.util.List;
 
 import net.sf.json.JSONObject;
 
+import org.apache.shiro.util.StringUtils;
+
 import com.inet.xportal.calbuilder.data.AttendeeDTO;
 
 /**
@@ -35,21 +37,27 @@ public class CalElement {
 	
 	// name of department (ref to CalDept)
 	private String deptUUID;
-	
+	// limit of show this calendar
+	// if value is BuilderConstant.PUBLISHED_SHOW, this element
+	// will be displayed from main board
+	private String scopeShow = StringUtils.EMPTY_STRING;
+	// status of this element (to be in reviewed list or published)
+	private boolean published = false;
 	private int year;
 	private int month;
 	private int week;
 	private int day;
-	private String creatorCode;
-	private String creatorName;
 	// in minutes. i.e from 7:30 = (7 x 60) + 30
 	private int startTime;
 	// in minutes. i.e to 9:00 = (9 x 60)
 	private int toTime;
-
-	private String organCode;
-	private String organName;
-	//
+	private String creatorCode;
+	private String creatorName;
+	
+	private String chairmanCode;
+	private String chairmanName;
+	
+	// content prepare owner (who/ firm will be palyed as content master)
 	private String contentOwner;
 	private String subject;
 	private String location;
@@ -59,11 +67,11 @@ public class CalElement {
 	
 	// members who attend to this meeting
 	private String memberBrief;
-	private List<AttendeeDTO> members = new ArrayList<AttendeeDTO>();
-
 	// members who observe this meeting
 	private String observerBrief;
-	private List<AttendeeDTO> observers = new ArrayList<AttendeeDTO>();
+	
+	// list of members build from request
+	private List<AttendeeDTO> members = new ArrayList<AttendeeDTO>();
 
 	public String getUuid() {
 		return uuid;
@@ -79,6 +87,22 @@ public class CalElement {
 
 	public void setDeptUUID(String deptUUID) {
 		this.deptUUID = deptUUID;
+	}
+
+	public String getScopeShow() {
+		return scopeShow;
+	}
+
+	public void setScopeShow(String scopeShow) {
+		this.scopeShow = scopeShow;
+	}
+
+	public boolean isPublished() {
+		return published;
+	}
+
+	public void setPublished(boolean published) {
+		this.published = published;
 	}
 
 	public int getYear() {
@@ -145,20 +169,20 @@ public class CalElement {
 		this.toTime = toTime;
 	}
 
-	public String getOrganCode() {
-		return organCode;
+	public String getChairmanCode() {
+		return chairmanCode;
 	}
 
-	public void setOrganCode(String organCode) {
-		this.organCode = organCode;
+	public void setChairmanCode(String chairmanCode) {
+		this.chairmanCode = chairmanCode;
 	}
 
-	public String getOrganName() {
-		return organName;
+	public String getChairmanName() {
+		return chairmanName;
 	}
 
-	public void setOrganName(String organName) {
-		this.organName = organName;
+	public void setChairmanName(String chairmanName) {
+		this.chairmanName = chairmanName;
 	}
 
 	public String getContentOwner() {
@@ -223,13 +247,5 @@ public class CalElement {
 
 	public void setObserverBrief(String observerBrief) {
 		this.observerBrief = observerBrief;
-	}
-
-	public List<AttendeeDTO> getObservers() {
-		return observers;
-	}
-
-	public void setObservers(List<AttendeeDTO> observers) {
-		this.observers = observers;
 	}
 }

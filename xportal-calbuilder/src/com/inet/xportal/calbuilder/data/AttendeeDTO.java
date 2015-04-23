@@ -26,6 +26,7 @@ package com.inet.xportal.calbuilder.data;
  */
 public class AttendeeDTO {
 	private String code;
+	private String role = AttendeeRole.MEMBER.name();
 	private String name;
 
 	public String getCode() {
@@ -34,6 +35,14 @@ public class AttendeeDTO {
 
 	public void setCode(String code) {
 		this.code = code;
+	}
+
+	public String getRole() {
+		return role;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
 	}
 
 	public String getName() {

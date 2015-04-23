@@ -13,17 +13,17 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  *****************************************************************/
-package com.inet.xportal.calbuilder;
+package com.inet.xportal.calbuilder.data;
 
 /**
- * BuilderConstant.
+ * AttendeeRole.
  *
  * @author Hien Nguyen
- * @version $Id: BuilderConstant.java Apr 23, 2015 10:05:13 AM nguyen_dv $
+ * @version $Id: AttendeeRole.java Apr 23, 2015 1:38:24 PM nguyen_dv $
  *
  * @since 1.0
  */
-public interface BuilderConstant {
-	public static final String ROLE_CALBUILDER = "$calbuilder";
-	public static final String PUBLISHED_SHOW = "PUBLISHED-SHOW";
+public enum AttendeeRole {
+	MEMBER,
+	OBSERVER
 }
