@@ -28,7 +28,10 @@ public class CalDept {
 	private String name;
 	// who will be acted calendar builder role
 	private String ownerCode;
-
+	private String siteID;
+	// template content
+	private String templateID;
+	
 	public String getUuid() {
 		return uuid;
 	}
@@ -51,5 +54,21 @@ public class CalDept {
 
 	public void setOwnerCode(String ownerCode) {
 		this.ownerCode = ownerCode;
+	}
+
+	public String getSiteID() {
+		return siteID;
+	}
+
+	public void setSiteID(String siteID) {
+		this.siteID = siteID;
+	}
+
+	public String getTemplateID() {
+		return templateID;
+	}
+
+	public void setTemplateID(String templateID) {
+		this.templateID = templateID;
 	}
 }

@@ -23,6 +23,7 @@ import javax.inject.Named;
 import com.inet.xportal.calbuilder.BuilderConstant;
 import com.inet.xportal.calbuilder.model.CalDept;
 import com.inet.xportal.calbuilder.model.CalElement;
+import com.inet.xportal.nosql.web.data.SearchDTO;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
@@ -77,11 +78,11 @@ public class DepartmentCalListDataservice extends DepartmentCalAbstraction {
 		if (day > 0)
 			week = -1;
 		
-		elementBO.queryByReviewed(dept.getUuid(), 
-				XParamUtils.getInteger("year",params,cal.get(Calendar.YEAR)), 
-				-1, 
-				week, 
-				day);
-		return new ObjectWebDataservice<CalElement>(element);
+		return new ObjectWebDataservice<SearchDTO<CalElement>>(
+				elementBO.queryByReviewed(dept.getUuid(), 
+					XParamUtils.getInteger("year",params,cal.get(Calendar.YEAR)), 
+					week, 
+					day, 
+					XParamUtils.getInteger("allday",params,0)));
     }
 }

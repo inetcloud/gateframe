@@ -57,7 +57,7 @@ public class CalElement {
 	private String chairmanCode;
 	private String chairmanName;
 	
-	// content prepare owner (who/ firm will be palyed as content master)
+	// content prepare owner (who/ firm will be played as content master)
 	private String contentOwner;
 	private String subject;
 	private String location;

@@ -13,17 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  *****************************************************************/
-package com.inet.xportal.calbuilder.dataservice;
+package com.inet.xportal.calbuilder.admservice;
 
-import java.util.Calendar;
 import java.util.Map;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import com.inet.xportal.calbuilder.bo.CalElementBO;
-import com.inet.xportal.calbuilder.model.CalElement;
-import com.inet.xportal.nosql.web.data.SearchDTO;
+import com.inet.xportal.calbuilder.bo.CalDeptBO;
+import com.inet.xportal.calbuilder.model.CalDept;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
@@ -34,33 +32,35 @@ import com.inet.xportal.web.interfaces.ObjectWebDataservice;
 import com.inet.xportal.web.interfaces.WebDataService;
 import com.inet.xportal.web.util.XParamUtils;
 
+
 /**
  * 
- * MainboardCalViewDataservice.
+ * CalDepartmentDeleteDataservice.
  *
  * @author Hien Nguyen
- * @version $Id: MainboardCalViewDataservice.java Apr 23, 2015 2:10:25 PM nguyen_dv $
+ * @version $Id: CalDepartmentDeleteDataservice.java Apr 27, 2015 9:59:26 AM nguyen_dv $
  *
  * @since 1.0
  */
-@Named("calbuildermainboardview")
-@XPortalDataService(description = "CalBuilder service")
-@XPortalPageRequest(uri = "calbuilder/mainboard/view", result = WebConstant.ACTION_XSTREAM_JSON_RESULT)
-public class MainboardCalViewDataservice extends DataServiceMarker {
+@Named("caldepartmentdelete")
+@XPortalDataService(roles={WebConstant.ROLE_ADMIN}, description = "CalDepartment service")
+@XPortalPageRequest(uri = "caldepartment/delete",
+	transaction = true,
+	result = WebConstant.ACTION_XSTREAM_JSON_RESULT)
+public class CalDepartmentDeleteDataservice extends  DataServiceMarker {
 	@Inject
-	private CalElementBO elementBO;
+	private CalDeptBO deptBO;
 	
 	/*
-	 * (non-Javadoc)
-	 * @see com.inet.xportal.web.interfaces.DataServiceMarker#service(com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
+	 * 
 	 */
 	@Override
-    protected WebDataService service(final AbstractBaseAction action, final Map<String, Object> params) throws WebOSBOException {
-		final Calendar cal = Calendar.getInstance();
-		return new ObjectWebDataservice<SearchDTO<CalElement>>(
-	    		elementBO.queryByMainboard(XParamUtils.getInteger("year",params,cal.get(Calendar.YEAR)),
-		    		XParamUtils.getInteger("week",params,cal.get(Calendar.WEEK_OF_YEAR)), 
-		    		-1, 
-		    		XParamUtils.getInteger("allday",params,0)));
+    protected WebDataService service(final AbstractBaseAction action, 
+    		final Map<String, Object> params) throws WebOSBOException {
+		String deptID = XParamUtils.getString("dept", params);
+		final CalDept dept = deptBO.load(deptID);
+		if (dept != null)
+			deptBO.remove(dept);
+		return new ObjectWebDataservice<CalDept>(dept);
     }
 }

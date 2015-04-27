@@ -18,11 +18,16 @@ package com.inet.xportal.calbuilder.bo;
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import org.apache.shiro.util.StringUtils;
+
 import com.inet.xportal.calbuilder.model.CalDept;
 import com.inet.xportal.nosql.web.bf.MagicContentBF;
 import com.inet.xportal.nosql.web.bo.MagicContentBO;
 import com.inet.xportal.nosql.web.data.SearchDTO;
+import com.inet.xportal.report.bo.ReportTemplateBO;
+import com.inet.xportal.report.model.ReportTemplate;
 import com.inet.xportal.web.exception.WebOSBOException;
+import com.inet.xportal.web.util.ResourceUtil;
 import com.inet.xportal.xdb.persistence.JSONDB;
 import com.inet.xportal.xdb.query.Query;
 import com.inet.xportal.xdb.query.impl.QueryImpl;
@@ -37,6 +42,9 @@ import com.inet.xportal.xdb.query.impl.QueryImpl;
  */
 @Named("CalBuilderDeptBO")
 public class CalDeptBO extends MagicContentBO<CalDept> {
+	@Inject
+	private ReportTemplateBO reportBO;
+	
 	/**
 	 * 
 	 * @param businessFacade
@@ -55,9 +63,60 @@ public class CalDeptBO extends MagicContentBO<CalDept> {
 	 */
 	@Override
     public String add(CalDept info) throws WebOSBOException {
-	    return super.add(info,"name");
+	    final CalDept item = loadByName(info.getName());
+	    if (item != null)
+	    	return item.getUuid();
+	    
+	    // create template for this department
+	    ReportTemplate template = new ReportTemplate();
+	    template.setApplication("CalBuilder");
+	    template.setModule(info.getName());
+	    template.setSite(info.getSiteID());
+	    template.setDescription("Template for " + info.getName());
+	    template.setName("template.xls");
+	    template.setMimetype("application/vnd.ms-excel");
+	    template.setType("xls");
+	    
+	    String templateID = reportBO.add(template, 
+	    		ResourceUtil.getResourceAsInputStream("template.xls"), 
+	    		"application/vnd.ms-excel");
+	    info.setTemplateID(templateID);
+	    
+		return super.add(info,"name");
     }
+	
 
+	/**
+	 * 
+	 * @param info
+	 * @throws WebOSBOException
+	 */
+	public void remove(CalDept info) throws WebOSBOException {
+		if (info != null && 
+			StringUtils.hasLength(info.getTemplateID()))
+		{
+			// remove template content of this department
+			reportBO.remove(info.getTemplateID(), info.getSiteID());
+			
+			// remove this department
+			super.remove(info.getUuid());
+		}
+	}
+	
+	/**
+	 * 
+	 * @param name
+	 * @return
+	 * @throws WebOSBOException
+	 */
+	public CalDept loadByName(String name) throws WebOSBOException
+	{
+		final Query<JSONDB> query = new QueryImpl<JSONDB>()
+				.field("name").equal(name);
+		
+		return super.load((QueryImpl<JSONDB>)query);
+	}
+	
 	/**
 	 * 
 	 * @param ownerCode

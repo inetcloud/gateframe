@@ -60,8 +60,8 @@ public class DepartmentCalViewDataservice extends DataServiceMarker {
 		return new ObjectWebDataservice<SearchDTO<CalElement>>(
 	    		elementBO.queryByPublished(XParamUtils.getString("dept", params),
 	    			XParamUtils.getInteger("year",params,cal.get(Calendar.YEAR)),
-	    			-1,
 		    		XParamUtils.getInteger("week",params,cal.get(Calendar.WEEK_OF_YEAR)),
-		    		-1));
+		    		-1, 
+		    		XParamUtils.getInteger("allday",params,0)));
     }
 }

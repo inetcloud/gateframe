@@ -123,23 +123,23 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	 * @param deptID
 	 * @param published
 	 * @param year
-	 * @param month
 	 * @param week
 	 * @param day
+	 * @param allday
 	 * @return
 	 * @throws WebOSBOException
 	 */
 	protected Query<JSONDB> queryBuilder(String deptID,
 			boolean published,
 			int year, 
-			int month, 
 			int week, 
-			int day) throws WebOSBOException
+			int day,
+			int allday) throws WebOSBOException
 	{
 		final Query<JSONDB> query = new QueryImpl<JSONDB>()
 				.field("year").equal(year)
 				.field("published").equal(published)
-				.order("startTime")
+				.order("day,startTime")
 				.retrievedFields(false, "attributes");
 		
 		if (BuilderConstant.PUBLISHED_SHOW.equalsIgnoreCase(deptID))
@@ -147,14 +147,22 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 		else
 			query.field("deptUUID").equal(deptID);
 			
-		if (month > 0)
-			query.field("month").equal(month);
-			
 		if (week > 0)
 			query.field("week").equal(week);
 			
 		if (day > 0)
 			query.field("day").equal(day);
+		
+		// morning only
+		if (allday == 1)
+		{
+			query.field("toTime").lessThanOrEq(720);
+		}
+		// afternoon
+		else if (allday == 2)
+		{
+			query.field("startTime").greaterThanOrEq(720);
+		}
 		
 		return query;
 	}
@@ -163,55 +171,56 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	 * 
 	 * @param deptID
 	 * @param year
-	 * @param month
 	 * @param week
 	 * @param day
+	 * @param allday
 	 * @return
 	 * @throws WebOSBOException
 	 */
 	public SearchDTO<CalElement> queryByReviewed(String deptID,
 			int year, 
-			int month, 
 			int week, 
-			int day) throws WebOSBOException
+			int day,
+			int allday) throws WebOSBOException
 	{
-		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, false, year, month, week, day));
+		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, false, year, week, day, allday));
 	}
 	
 	/**
 	 * 
 	 * @param deptID
 	 * @param year
-	 * @param month
 	 * @param week
 	 * @param day
+	 * @param allday
 	 * @return
 	 * @throws WebOSBOException
 	 */
 	public SearchDTO<CalElement> queryByPublished(String deptID,
 			int year, 
-			int month, 
 			int week, 
-			int day) throws WebOSBOException
+			int day,
+			int allday) throws WebOSBOException
 	{
-		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, true, year, month, week, day));
+		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, true, year, week, day,allday));
 	}
 	
 	/**
 	 * 
 	 * @param year
 	 * @param week
+	 * @param day
+	 * @param allday
 	 * @return
 	 * @throws WebOSBOException
 	 */
-	public SearchDTO<CalElement> queryByMainboard(int year, int week) throws WebOSBOException
+	public SearchDTO<CalElement> queryByMainboard(int year, int week, int day, int allday) throws WebOSBOException
 	{
 		return super.query((QueryImpl<JSONDB>)queryBuilder(BuilderConstant.PUBLISHED_SHOW, 
 				true, 
 				year, 
-				-1, 
 				week, 
-				-1));
+				day,allday));
 	}
 	
 	/*

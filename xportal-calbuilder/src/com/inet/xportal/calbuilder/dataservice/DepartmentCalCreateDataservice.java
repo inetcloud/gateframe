@@ -109,7 +109,7 @@ public class DepartmentCalCreateDataservice extends DepartmentCalAbstraction {
 			cal.set(Calendar.YEAR, model.getYear());
 		
 		if (model.getDay() <= 0)
-			model.setYear(cal.get(Calendar.DAY_OF_YEAR));
+			model.setDay(cal.get(Calendar.DAY_OF_YEAR));
 		else
 			cal.set(Calendar.DAY_OF_YEAR, model.getDay());
 		
