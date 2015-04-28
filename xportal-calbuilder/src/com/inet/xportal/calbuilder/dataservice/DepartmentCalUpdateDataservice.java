@@ -24,6 +24,7 @@ import org.apache.shiro.util.StringUtils;
 import com.inet.xportal.calbuilder.BuilderConstant;
 import com.inet.xportal.calbuilder.model.CalDept;
 import com.inet.xportal.calbuilder.model.CalElement;
+import com.inet.xportal.calbuilder.util.CalElementUtil;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
@@ -113,10 +114,10 @@ public class DepartmentCalUpdateDataservice extends DepartmentCalAbstraction {
 			element.setObserverBrief(XParamUtils.getString("observerBrief", params));
 			
 			// attribute update
-			attributeUpdate(element.getAttributes(), action, params);
+			CalElementUtil.attributeUpdate(element.getAttributes(), params);
 			
 			// update member list
-			attendeeUpdate(element.getMembers(), action, params);
+			CalElementUtil.attendeeUpdate(element.getMembers(), params);
 		}
 		
 		// element is published, then update only change status of this element

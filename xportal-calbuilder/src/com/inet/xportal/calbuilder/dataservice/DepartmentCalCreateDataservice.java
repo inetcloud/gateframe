@@ -25,6 +25,7 @@ import org.apache.shiro.util.StringUtils;
 import com.inet.xportal.calbuilder.BuilderConstant;
 import com.inet.xportal.calbuilder.model.CalDept;
 import com.inet.xportal.calbuilder.model.CalElement;
+import com.inet.xportal.calbuilder.util.CalElementUtil;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
@@ -116,10 +117,10 @@ public class DepartmentCalCreateDataservice extends DepartmentCalAbstraction {
 		elementBO.TimeAdjustWithoutSave(model);
 		
 		// attribute update
-		attributeUpdate(model.getAttributes(), action, params);
+		CalElementUtil.attributeUpdate(model.getAttributes(), params);
 		
 		// attendee builder
-		attendeeUpdate(model.getMembers(), action, params);
+		CalElementUtil.attendeeUpdate(model.getMembers(), params);
 				
 		return model;
 	}

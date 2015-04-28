@@ -22,13 +22,19 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import org.apache.shiro.util.CollectionUtils;
+import org.apache.shiro.util.StringUtils;
+
 import com.inet.xportal.calbuilder.BuilderConstant;
 import com.inet.xportal.calbuilder.data.AttendeeDTO;
 import com.inet.xportal.calbuilder.model.CalElement;
 import com.inet.xportal.nosql.web.bf.MagicContentBF;
 import com.inet.xportal.nosql.web.bo.MagicContentBO;
 import com.inet.xportal.nosql.web.data.SearchDTO;
+import com.inet.xportal.nosql.web.model.SiteDataModel;
+import com.inet.xportal.unifiedpush.data.TodoActionType;
 import com.inet.xportal.web.exception.WebOSBOException;
+import com.inet.xportal.web.message.CalendarMessage;
 import com.inet.xportal.xdb.business.BaseDBStore;
 import com.inet.xportal.xdb.persistence.JSONDB;
 import com.inet.xportal.xdb.query.Query;
@@ -248,5 +254,43 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	@Override
 	protected Map<String, Class<?>> childrenConvertMap() {
 		return childrenConvert;
+	}
+	
+	/**
+	 * 
+	 * @param element
+	 */
+	public void calendarBuilder(final CalElement element, final SiteDataModel siteInf)
+	{
+		// don't need to build this calendar
+		if (CollectionUtils.isEmpty(element.getMembers()))
+			return;
+		
+		for (AttendeeDTO member : element.getMembers())
+		{
+			final CalendarMessage message = new CalendarMessage();
+			message.setAction(TodoActionType.CREATE.name());
+			
+			// chairman
+			if (StringUtils.hasLength(element.getChairmanCode()))
+				message.setChairman(element.getChairmanCode());
+			else
+				message.setChairman(element.getChairmanName());
+			
+			// the subject of meeting
+			message.setSubject(element.getSubject());
+			
+			// description
+			message.setSummary(element.getSummary());
+			
+			// who create this meeting
+			message.setCreator(member.getCode());
+			
+			message.setFirmContext(siteInf.getFirmContext());
+			message.setFirmName(siteInf.getName());
+			message.setFirmSharedDomain(siteInf.getShareDomain());
+			message.setRefTodoID(element.getUuid());
+			message.setEnddate(element.getToTime());
+		}
 	}
 }
