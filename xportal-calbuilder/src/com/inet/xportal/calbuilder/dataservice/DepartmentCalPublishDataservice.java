@@ -15,15 +15,20 @@
  *****************************************************************/
 package com.inet.xportal.calbuilder.dataservice;
 
+import java.util.Calendar;
 import java.util.Map;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import org.apache.shiro.util.CollectionUtils;
+
 import com.inet.xportal.calbuilder.BuilderConstant;
 import com.inet.xportal.calbuilder.model.CalDept;
 import com.inet.xportal.calbuilder.model.CalElement;
-import com.inet.xportal.unifiedpush.data.TodoActionType;
+import com.inet.xportal.nosql.web.bo.SiteBO;
+import com.inet.xportal.nosql.web.data.SearchDTO;
+import com.inet.xportal.nosql.web.model.SiteDataModel;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
@@ -33,24 +38,41 @@ import com.inet.xportal.web.exception.WebOSBOException;
 import com.inet.xportal.web.interfaces.ObjectWebDataservice;
 import com.inet.xportal.web.interfaces.WebDataService;
 import com.inet.xportal.web.message.CalendarMessage;
+import com.inet.xportal.web.util.XParamUtils;
 
 /**
  * 
- * DepartmentCalDeleteDataservice.
+ * DepartmentCalPublishDataservice.
  *
  * @author Hien Nguyen
- * @version $Id: DepartmentCalDeleteDataservice.java Apr 23, 2015 2:48:38 PM nguyen_dv $
+ * @version $Id: DepartmentCalPublishDataservice.java Apr 29, 2015 8:32:54 AM nguyen_dv $
  *
  * @since 1.0
  */
-@Named("calbuilderdepartmentdelete")
+@Named("calbuilderdepartmentpublish")
 @XPortalDataService(roles={BuilderConstant.ROLE_CALBUILDER}, description = "CalBuilder service")
-@XPortalPageRequest(uri = "calbuilder/department/delete",
+@XPortalPageRequest(uri = "calbuilder/department/publish",
 	transaction = true,
 	result = WebConstant.ACTION_XSTREAM_JSON_RESULT)
-public class DepartmentCalDeleteDataservice extends DepartmentCalAbstraction {
+public class DepartmentCalPublishDataservice extends DepartmentCalAbstraction {
 	@Inject
 	private PushEventBO eventBO;
+	
+	@Inject
+	private SiteBO siteBO;
+	
+	/*
+	 * (non-Javadoc)
+	 * @see com.inet.xportal.calbuilder.dataservice.DepartmentCalAbstraction#loadElement(com.inet.xportal.calbuilder.model.CalDept, com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
+	 */
+	@Override
+	protected CalElement loadElement(final CalDept dept, 
+			final AbstractBaseAction action, 
+			final Map<String, Object> params) throws WebOSBOException
+	{
+		return new CalElement();
+	}
+	
 	/*
 	 * (non-Javadoc)
 	 * @see com.inet.xportal.calbuilder.dataservice.DepartmentCalAbstraction#service(com.inet.xportal.calbuilder.model.CalDept, com.inet.xportal.calbuilder.model.CalElement, com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
@@ -60,18 +82,25 @@ public class DepartmentCalDeleteDataservice extends DepartmentCalAbstraction {
     		final CalElement element,
     		final AbstractBaseAction action, 
     		final Map<String, Object> params) throws WebOSBOException {
-		if (element.isPublished())
-		{
-			CalendarMessage message = new CalendarMessage();
-			message.setAction(TodoActionType.REMOVE.name());
-			message.setRefTodoID(element.getUuid());
+		final Calendar cal = Calendar.getInstance();
+		final SearchDTO<CalElement> elements = elementBO.publishByFirm(dept.getUuid(), 
+				XParamUtils.getInteger("year",params,cal.get(Calendar.YEAR)),
+				XParamUtils.getInteger("week",params,cal.get(Calendar.WEEK_OF_YEAR)));
 			
-			// remove calendar of this event
-			eventBO.message(message);
+		// create event in calendar for all these elements
+		if (elements != null && elements.getTotal() > 0)
+		{
+			final SiteDataModel siteInf = siteBO.load(action.getSiteID());
+			for (CalElement item : elements.getItems())
+			{
+				if (!CollectionUtils.isEmpty(item.getMembers()))
+				{
+					final CalendarMessage message = elementBO.calendarBuilder(item, siteInf);
+					if (message != null)
+						eventBO.message(message);
+				}
+			}
 		}
-		
-		// remove this calendar event
-		elementBO.remove(element.getUuid());
 		
 		return new ObjectWebDataservice<CalElement>(element);
     }

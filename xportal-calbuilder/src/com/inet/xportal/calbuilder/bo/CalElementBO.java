@@ -27,6 +27,7 @@ import org.apache.shiro.util.StringUtils;
 
 import com.inet.xportal.calbuilder.BuilderConstant;
 import com.inet.xportal.calbuilder.data.AttendeeDTO;
+import com.inet.xportal.calbuilder.data.AttendeeRole;
 import com.inet.xportal.calbuilder.model.CalElement;
 import com.inet.xportal.nosql.web.bf.MagicContentBF;
 import com.inet.xportal.nosql.web.bo.MagicContentBO;
@@ -38,7 +39,9 @@ import com.inet.xportal.web.message.CalendarMessage;
 import com.inet.xportal.xdb.business.BaseDBStore;
 import com.inet.xportal.xdb.persistence.JSONDB;
 import com.inet.xportal.xdb.query.Query;
+import com.inet.xportal.xdb.query.Update;
 import com.inet.xportal.xdb.query.impl.QueryImpl;
+import com.inet.xportal.xdb.query.impl.UpdateImpl;
 
 /**
  * CalElementBO.
@@ -178,6 +181,39 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	 * @param deptID
 	 * @param year
 	 * @param week
+	 * @return
+	 * @throws WebOSBOException
+	 */
+	public SearchDTO<CalElement> publishByFirm(String deptID,
+			int year, 
+			int week) throws WebOSBOException
+	{
+		// query all items in week
+		final Query<JSONDB> query = new QueryImpl<JSONDB>()
+				.field("year").equal(year)
+				.field("week").equal(week)
+				.field("published").equal(false)
+				.field("deptUUID").equal(deptID);
+		
+		// update with published status
+		final Update<JSONDB> opts = new UpdateImpl<JSONDB>()
+				.set("published", true);
+		
+		final SearchDTO<CalElement> result = super.query((QueryImpl<JSONDB>)query);
+		if (result != null && result.getTotal() > 0)
+		{
+			// publish all elements
+			super.update((UpdateImpl<JSONDB>)opts, (QueryImpl<JSONDB>)query);
+		}
+		
+		return result;
+	}
+	
+	/**
+	 * 
+	 * @param deptID
+	 * @param year
+	 * @param week
 	 * @param day
 	 * @param allday
 	 * @return
@@ -260,37 +296,63 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	 * 
 	 * @param element
 	 */
-	public void calendarBuilder(final CalElement element, final SiteDataModel siteInf)
+	public CalendarMessage calendarBuilder(final CalElement element, final SiteDataModel siteInf)
 	{
 		// don't need to build this calendar
 		if (CollectionUtils.isEmpty(element.getMembers()))
-			return;
+			return null;
 		
+		final CalendarMessage message = new CalendarMessage();
+		message.setAction(TodoActionType.CREATE.name());
+		
+		// add member into this meeting
 		for (AttendeeDTO member : element.getMembers())
 		{
-			final CalendarMessage message = new CalendarMessage();
-			message.setAction(TodoActionType.CREATE.name());
-			
-			// chairman
-			if (StringUtils.hasLength(element.getChairmanCode()))
-				message.setChairman(element.getChairmanCode());
-			else
-				message.setChairman(element.getChairmanName());
-			
-			// the subject of meeting
-			message.setSubject(element.getSubject());
-			
-			// description
-			message.setSummary(element.getSummary());
-			
-			// who create this meeting
-			message.setCreator(member.getCode());
-			
-			message.setFirmContext(siteInf.getFirmContext());
-			message.setFirmName(siteInf.getName());
-			message.setFirmSharedDomain(siteInf.getShareDomain());
-			message.setRefTodoID(element.getUuid());
-			message.setEnddate(element.getToTime());
+			if (AttendeeRole.MEMBER.name().equals(member.getRole()))
+			{
+				message.getMembers().add(member.getCode());
+			}
 		}
+		
+		if (CollectionUtils.isEmpty(message.getMembers()))
+			return null;
+		
+		// chairman
+		if (StringUtils.hasLength(element.getChairmanCode()))
+			message.setChairman(element.getChairmanCode());
+		else
+			message.setChairman(element.getChairmanName());
+		
+		// the subject of meeting
+		message.setSubject(element.getSubject());
+		
+		// description
+		message.setSummary(element.getSummary());
+		// location
+		message.setLocation(element.getLocation());
+		// who create this meeting
+		message.setCreator(element.getCreatorCode());
+		
+		message.setFirmContext(siteInf.getFirmContext());
+		message.setFirmName(siteInf.getName());
+		message.setFirmSharedDomain(siteInf.getShareDomain());
+		message.setRefTodoID(element.getUuid());
+		
+		Calendar cal = Calendar.getInstance();
+		cal.set(Calendar.YEAR,element.getYear());
+		cal.set(Calendar.DAY_OF_YEAR,element.getDay());
+		
+		cal.set(Calendar.HOUR_OF_DAY,(int)(element.getStartTime() / 60));
+		cal.set(Calendar.MINUTE,element.getStartTime() % 60);
+		// start time of this calendar
+		message.setStartdate(cal.getTimeInMillis());
+		
+		cal.set(Calendar.HOUR_OF_DAY,(int)(element.getToTime() / 60));
+		cal.set(Calendar.MINUTE,element.getToTime() % 60);
+		
+		// end time fo this calendar
+		message.setEnddate(cal.getTimeInMillis());
+		
+		return message;
 	}
 }

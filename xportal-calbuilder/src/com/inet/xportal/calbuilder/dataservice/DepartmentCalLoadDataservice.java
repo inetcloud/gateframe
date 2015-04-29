@@ -17,50 +17,42 @@ package com.inet.xportal.calbuilder.dataservice;
 
 import java.util.Map;
 
-import javax.inject.Inject;
 import javax.inject.Named;
 
 import com.inet.xportal.calbuilder.BuilderConstant;
-import com.inet.xportal.calbuilder.bo.CalDeptBO;
 import com.inet.xportal.calbuilder.model.CalDept;
-import com.inet.xportal.nosql.web.data.SearchDTO;
+import com.inet.xportal.calbuilder.model.CalElement;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
 import com.inet.xportal.web.annotation.XPortalPageRequest;
 import com.inet.xportal.web.exception.WebOSBOException;
-import com.inet.xportal.web.interfaces.DataServiceMarker;
 import com.inet.xportal.web.interfaces.ObjectWebDataservice;
 import com.inet.xportal.web.interfaces.WebDataService;
-import com.inet.xportal.web.util.SecurityUtil;
 
 /**
  * 
- * DepartmentOwnerListDataservice.
+ * DepartmentCalLoadDataservice.
  *
  * @author Hien Nguyen
- * @version $Id: DepartmentOwnerListDataservice.java Apr 28, 2015 5:38:02 PM nguyen_dv $
+ * @version $Id: DepartmentCalLoadDataservice.java Apr 29, 2015 11:43:09 AM nguyen_dv $
  *
  * @since 1.0
  */
-@Named("calbuilderdepartmentownerlist")
+@Named("calbuilderdepartmentload")
 @XPortalDataService(roles={BuilderConstant.ROLE_CALBUILDER}, description = "CalBuilder service")
-@XPortalPageRequest(uri = "calbuilder/department/ownerlist",
+@XPortalPageRequest(uri = "calbuilder/department/load",
 	result = WebConstant.ACTION_XSTREAM_JSON_RESULT)
-public class DepartmentOwnerListDataservice extends DataServiceMarker {
-	@Inject
-	private CalDeptBO deptBO;
-	
-	
+public class DepartmentCalLoadDataservice extends DepartmentCalAbstraction {
 	/*
 	 * (non-Javadoc)
-	 * @see com.inet.xportal.web.interfaces.DataServiceMarker#service(com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
+	 * @see com.inet.xportal.calbuilder.dataservice.DepartmentCalAbstraction#service(com.inet.xportal.calbuilder.model.CalDept, com.inet.xportal.calbuilder.model.CalElement, com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
 	 */
 	@Override
-    protected WebDataService service(final AbstractBaseAction action, final Map<String, Object> params) throws WebOSBOException {
-		final SearchDTO<CalDept> result = deptBO.query(SecurityUtil.getPrincipal());
-		if (result == null)
-			return new ObjectWebDataservice<SearchDTO<CalDept>>(new SearchDTO<CalDept>());
-		return new ObjectWebDataservice<SearchDTO<CalDept>>(result);
+    protected WebDataService service(final CalDept dept,
+    		final CalElement element,
+    		final AbstractBaseAction action, 
+    		final Map<String, Object> params) throws WebOSBOException {
+		return new ObjectWebDataservice<CalElement>(element);
     }
 }

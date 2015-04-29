@@ -137,7 +137,6 @@ public class DepartmentCalCreateDataservice extends DepartmentCalAbstraction {
 		
 		String uuid = elementBO.add(element);
 		element.setUuid(uuid);
-		
 		return new ObjectWebDataservice<CalElement>(element);
     }
 }
