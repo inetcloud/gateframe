@@ -23,11 +23,9 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import org.apache.shiro.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.inet.xportal.calbuilder.BuilderConstant;
 import com.inet.xportal.calbuilder.bo.CalElementBO;
 import com.inet.xportal.calbuilder.data.WeekReportData;
 import com.inet.xportal.calbuilder.model.CalElement;
@@ -63,13 +61,8 @@ public class ReportCalBuilderDOWeek implements ReportService {
 		int year = XParamUtils.getInteger("year", params, cal.get(Calendar.YEAR));
 		int week = XParamUtils.getInteger("week", params, cal.get(Calendar.WEEK_OF_YEAR));
 		
-		if (!StringUtils.hasLength(deptID))
-			deptID = BuilderConstant.PUBLISHED_SHOW;
-		
-		SearchDTO<CalElement> result = null;
-		if (!StringUtils.hasLength(deptID))
-			result = elementBO.queryByMainboard(year, week, -1, 0);
-		else if (XParamUtils.getBoolean("published", params, true))
+		final SearchDTO<CalElement> result;
+		if (XParamUtils.getBoolean("published", params, true))
 			result = elementBO.queryByPublished(deptID,year, week, -1, 0);
 		else
 			result = elementBO.queryByReviewed(deptID,year, week, -1,0);

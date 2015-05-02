@@ -25,5 +25,4 @@ package com.inet.xportal.calbuilder;
  */
 public interface BuilderConstant {
 	public static final String ROLE_CALBUILDER = "$calbuilder";
-	public static final String PUBLISHED_SHOW = "PUBLISHED-SHOW";
 }

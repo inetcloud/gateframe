@@ -38,7 +38,6 @@ public class CalElement {
 	// name of department (ref to CalDept)
 	private String deptUUID;
 	// limit of show this calendar
-	// if value is BuilderConstant.PUBLISHED_SHOW, this element
 	// will be displayed from main board
 	private String scopeShow = StringUtils.EMPTY_STRING;
 	// status of this element (to be in reviewed list or published)

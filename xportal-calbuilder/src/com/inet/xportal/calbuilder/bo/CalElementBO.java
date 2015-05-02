@@ -25,7 +25,6 @@ import javax.inject.Named;
 import org.apache.shiro.util.CollectionUtils;
 import org.apache.shiro.util.StringUtils;
 
-import com.inet.xportal.calbuilder.BuilderConstant;
 import com.inet.xportal.calbuilder.data.AttendeeDTO;
 import com.inet.xportal.calbuilder.data.AttendeeRole;
 import com.inet.xportal.calbuilder.model.CalElement;
@@ -139,7 +138,7 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	 * @throws WebOSBOException
 	 */
 	protected Query<JSONDB> queryBuilder(String deptID,
-			boolean published,
+			int published,
 			int year, 
 			int week, 
 			int day,
@@ -147,13 +146,13 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	{
 		final Query<JSONDB> query = new QueryImpl<JSONDB>()
 				.field("year").equal(year)
-				.field("published").equal(published)
 				.order("day,startTime")
 				.retrievedFields(false, "attributes");
 		
-		if (BuilderConstant.PUBLISHED_SHOW.equalsIgnoreCase(deptID))
-			query.field("scopeShow").equal(BuilderConstant.PUBLISHED_SHOW);
-		else
+		if (published > 0)
+			query.field("published").equal(published == 1 ? true : false);
+		
+		if (StringUtils.hasLength(deptID))
 			query.field("deptUUID").equal(deptID);
 			
 		if (week > 0)
@@ -225,7 +224,7 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 			int day,
 			int allday) throws WebOSBOException
 	{
-		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, false, year, week, day, allday));
+		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, 0, year, week, day, allday));
 	}
 	
 	/**
@@ -244,11 +243,12 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 			int day,
 			int allday) throws WebOSBOException
 	{
-		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, true, year, week, day,allday));
+		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, 1, year, week, day,allday));
 	}
 	
 	/**
 	 * 
+	 * @param scopeShow
 	 * @param year
 	 * @param week
 	 * @param day
@@ -256,13 +256,20 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	 * @return
 	 * @throws WebOSBOException
 	 */
-	public SearchDTO<CalElement> queryByMainboard(int year, int week, int day, int allday) throws WebOSBOException
+	public SearchDTO<CalElement> queryByMainboard(String scopeShow, int year, int week, int day, int allday) throws WebOSBOException
 	{
-		return super.query((QueryImpl<JSONDB>)queryBuilder(BuilderConstant.PUBLISHED_SHOW, 
-				true, 
+		final Query<JSONDB> query = queryBuilder(StringUtils.EMPTY_STRING, 
+				1, 
 				year, 
 				week, 
-				day,allday));
+				day,allday);
+		
+		if (StringUtils.hasLength(scopeShow))
+			query.field("scopeShow").equal(scopeShow);
+		else
+			query.field("scopeShow").notEqual(StringUtils.EMPTY_STRING);
+		
+		return super.query((QueryImpl<JSONDB>)query);
 	}
 	
 	/*

@@ -20,7 +20,6 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import org.apache.shiro.util.CollectionUtils;
 import org.apache.shiro.util.StringUtils;
 
 import com.inet.xportal.calbuilder.BuilderConstant;
@@ -117,6 +116,9 @@ public class DepartmentCalUpdateDataservice extends DepartmentCalAbstraction {
 		// 1. remove old calendar
 		if (element.isPublished())
 		{
+			// change this record to un-published
+			element.setPublished(false);
+			
 			CalendarMessage message = new CalendarMessage();
 			message.setAction(TodoActionType.REMOVE.name());
 			message.setRefTodoID(element.getUuid());
@@ -142,16 +144,6 @@ public class DepartmentCalUpdateDataservice extends DepartmentCalAbstraction {
 	
 		// update element 
 		elementBO.update(element.getUuid(), element);
-		
-		// create calendar event
-		if (element.isPublished() && 
-			!CollectionUtils.isEmpty(element.getMembers()))
-		{
-			final CalendarMessage message = elementBO.calendarBuilder(element, 
-					siteBO.load(action.getSiteID()));
-			if (message != null)
-				eventBO.message(message);
-		}
 		
 		return new ObjectWebDataservice<CalElement>(element);
     }

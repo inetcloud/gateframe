@@ -58,7 +58,9 @@ public class MainboardCalViewDataservice extends DataServiceMarker {
     protected WebDataService service(final AbstractBaseAction action, final Map<String, Object> params) throws WebOSBOException {
 		final Calendar cal = Calendar.getInstance();
 		return new ObjectWebDataservice<SearchDTO<CalElement>>(
-	    		elementBO.queryByMainboard(XParamUtils.getInteger("year",params,cal.get(Calendar.YEAR)),
+	    		elementBO.queryByMainboard(
+	    			XParamUtils.getString("scope", params),
+	    			XParamUtils.getInteger("year",params,cal.get(Calendar.YEAR)),
 		    		XParamUtils.getInteger("week",params,cal.get(Calendar.WEEK_OF_YEAR)), 
 		    		-1, 
 		    		XParamUtils.getInteger("allday",params,0)));

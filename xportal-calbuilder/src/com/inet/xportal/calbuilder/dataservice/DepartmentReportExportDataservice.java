@@ -48,7 +48,7 @@ import com.inet.xportal.web.util.XParamUtils;
 @Named("calbuilderdepartmentreport")
 @XPortalDataService(roles={WebConstant.ROLE_USER}, description="Report service")
 @XPortalPageRequest(uri="calbuilder/department/report",
-	action=WebConstant.FILE_DOWNLOAD_ACTON, 
+	action = WebConstant.FILE_DOWNLOAD_ACTON, 
 	result = WebConstant.ACTION_XSTREAM_RESULT)
 public class DepartmentReportExportDataservice extends ReportDirectDownloadDataservice {
 	@Inject

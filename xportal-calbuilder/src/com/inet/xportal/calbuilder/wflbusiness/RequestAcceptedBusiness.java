@@ -15,6 +15,8 @@
  *****************************************************************/
 package com.inet.xportal.calbuilder.wflbusiness;
 
+import java.util.Calendar;
+
 import javax.inject.Inject;
 import javax.inject.Named;
 
@@ -34,6 +36,7 @@ import com.inet.xportal.itask.business.FirmTaskBusinessAbstraction;
 import com.inet.xportal.itask.model.TaskHistory;
 import com.inet.xportal.itask.model.TaskRequest;
 import com.inet.xportal.itask.model.TaskUIForm;
+import com.inet.xportal.web.util.XParamUtils;
 
 /**
  * 
@@ -66,21 +69,30 @@ public class RequestAcceptedBusiness extends FirmTaskBusinessAbstraction {
 			final TaskRequest requestInfo,
 	        final TaskUIForm formUI, 
 	        final TaskHistory historyInfo) {
-		String deptID = (String) getVariable("dept");
-		if (!StringUtils.hasLength(deptID))
-			return;
-
-		// check department information
-		final CalDept deptInf = deptBO.load(deptID);
-		if (deptInf == null)
-			return;
-		
+		logger.debug("RequestAcceptedBusiness is comming: {}", requestInfo.getRequestData());
 		// leave form data makeup
 		if (requestInfo.getRequestData() != null) {
-			if (requestInfo.getRequestData().has("elements"))
+			if (!requestInfo.getRequestData().has("dept"))
+			{
+				logger.debug("There is no [dept]");
+				return;
+			}
+			
+			String deptID = requestInfo.getRequestData().getString("dept");
+			logger.debug("Department {} sent to process.", deptID);
+			if (!StringUtils.hasLength(deptID))
+				return;
+			
+			// check department information
+			final CalDept deptInf = deptBO.load(deptID);
+			logger.debug("Department {} data load: {}", deptID, deptInf);
+			if (deptInf == null)
+				return;
+			
+			if (requestInfo.getRequestData().has("items"))
 		    {
-				Object element = requestInfo.getRequestData().get("elements");
-			    logger.debug("Element object: {}", element);
+				Object element = requestInfo.getRequestData().get("items");
+			    logger.debug("Items object: {}", element);
 			    if (element != null)
 			    {
 			    	if (element instanceof JSONObject)
@@ -99,6 +111,7 @@ public class RequestAcceptedBusiness extends FirmTaskBusinessAbstraction {
 		    }
 			else
 			{
+				logger.debug("Build item: {}", requestInfo.getRequestData());
 				elementBuilder(deptInf, requestInfo.getRequestData());
 			}
 		}
@@ -113,15 +126,38 @@ public class RequestAcceptedBusiness extends FirmTaskBusinessAbstraction {
 		logger.debug("elementBuilder: {}", json);
 		if (json.has("startTime") && 
 			json.has("toTime") &&
-			json.has("day") &&
-			json.has("subject")) {
+			(json.has("day") || json.has("dateTime")) &&
+			(json.has("subject") || json.has("summary"))) {
 			
 			final CalElement element = new CalElement();
 			element.setDeptUUID(deptInf.getUuid());
-			element.setSubject(json.getString("subject"));
-			element.setDay(json.getInt("day"));
-			if (json.has("year"))
-				element.setYear(json.getInt("year"));
+			
+			if (json.has("summary"))
+				element.setSubject(json.getString("summary"));
+			else
+				element.setSubject(json.getString("subject"));
+			
+			// get time of request
+			if (json.has("day"))
+			{
+				element.setDay(XParamUtils.getInteger(json.get("day")));
+				if (json.has("year"))
+					element.setYear(XParamUtils.getInteger(json.get("year")));
+			} 
+			else
+			{
+				long dateTime = XParamUtils.getLong(json.get("dateTime"));
+				Calendar cal = Calendar.getInstance();
+				cal.setTimeInMillis(dateTime);
+				
+				// update day and year f element request
+				element.setDay(cal.get(Calendar.DAY_OF_YEAR));
+				element.setYear(cal.get(Calendar.YEAR));
+			}
+			
+			// get startTime and toTime
+			element.setStartTime(timeParser(json.getString("startTime")));
+			element.setToTime(timeParser(json.getString("toTime")));
 			
 			// chairman information
 			if (json.has("chairmanName"))
@@ -150,6 +186,27 @@ public class RequestAcceptedBusiness extends FirmTaskBusinessAbstraction {
 				CalElementUtil.attendeeUpdate(element.getMembers(), json.get("attendee"));
 			
 			elementBO.add(element);
+		}
+	}
+	
+	/**
+	 * 
+	 * @param value
+	 * @return
+	 */
+	private int timeParser(String value)
+	{
+		logger.debug("Time {} is pasring...", value);
+		
+		String[] vals = value.split(":");
+		
+		if (vals.length > 1)
+		{
+			return (XParamUtils.getInteger(vals[0]) * 60) + XParamUtils.getInteger(vals[1]);
+		}
+		else
+		{
+			return XParamUtils.getInteger(vals[1]);
 		}
 	}
 }
