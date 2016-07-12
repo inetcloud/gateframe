@@ -13,26 +13,29 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  *****************************************************************/
-package com.inet.xportal.calbuilder.dataservice;
+package com.inet.xportal.calbuilder.subadmservice;
 
 import java.util.Map;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import com.inet.xportal.calbuilder.BuilderConstant;
-import com.inet.xportal.calbuilder.model.CalDept;
-import com.inet.xportal.calbuilder.model.CalElement;
-import com.inet.xportal.unifiedpush.data.TodoActionType;
+import org.apache.shiro.util.StringUtils;
+
+import com.inet.xportal.calbuilder.bo.CalDepartmentBO;
+import com.inet.xportal.calbuilder.dataservice.CalBaseAbstraction;
+import com.inet.xportal.calbuilder.model.CalDepartment;
+import com.inet.xportal.nosql.web.NoSQLConstant;
+import com.inet.xportal.nosql.web.data.FirmProfileDTO;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
 import com.inet.xportal.web.annotation.XPortalPageRequest;
-import com.inet.xportal.web.bo.PushEventBO;
+import com.inet.xportal.web.data.ViolationDTO;
 import com.inet.xportal.web.exception.WebOSBOException;
 import com.inet.xportal.web.interfaces.ObjectWebDataservice;
 import com.inet.xportal.web.interfaces.WebDataService;
-import com.inet.xportal.web.message.CalendarMessage;
+import com.inet.xportal.web.util.XParamUtils;
 
 /**
  * 
@@ -44,35 +47,34 @@ import com.inet.xportal.web.message.CalendarMessage;
  * @since 1.0
  */
 @Named("calbuilderdepartmentdelete")
-@XPortalDataService(roles={BuilderConstant.ROLE_CALBUILDER}, description = "CalBuilder service")
+@XPortalDataService(roles={NoSQLConstant.ROLE_SUBADMIN}, description = "CalBuilder service")
 @XPortalPageRequest(uri = "calbuilder/department/delete",
+	inherit = true,
 	transaction = true,
 	result = WebConstant.ACTION_XSTREAM_JSON_RESULT)
-public class DepartmentCalDeleteDataservice extends DepartmentCalAbstraction {
+public class DepartmentCalDeleteDataservice extends CalBaseAbstraction {
 	@Inject
-	private PushEventBO eventBO;
+	private CalDepartmentBO deptBO;
 	/*
 	 * (non-Javadoc)
 	 * @see com.inet.xportal.calbuilder.dataservice.DepartmentCalAbstraction#service(com.inet.xportal.calbuilder.model.CalDept, com.inet.xportal.calbuilder.model.CalElement, com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
 	 */
 	@Override
-    protected WebDataService service(final CalDept dept,
-    		final CalElement element,
-    		final AbstractBaseAction action, 
-    		final Map<String, Object> params) throws WebOSBOException {
-		if (element.isPublished())
+    protected WebDataService service(final FirmProfileDTO subfirm,
+			final AbstractBaseAction action,
+			final Map<String, Object> params) throws WebOSBOException {
+		String depart = XParamUtils.getString("department", params);
+		if (!StringUtils.hasLength(depart))
 		{
-			CalendarMessage message = new CalendarMessage();
-			message.setAction(TodoActionType.REMOVE.name());
-			message.setRefTodoID(element.getUuid());
-			
-			// remove calendar of this event
-			eventBO.message(message);
+			logger.error("Depart ID is required");
+			action.getViolation().add(new ViolationDTO("DEPARTMENT", "DEPARTMENT", 1, "DEPARTMENT_MISSED"));
+			throw new WebOSBOException("Bad request!");
 		}
 		
-		// remove this calendar event
-		elementBO.remove(element.getUuid());
+		final CalDepartment model = deptBO.loadByID(subfirm.getUuid(), depart);
+		if (model != null)
+			deptBO.remove(depart);
 		
-		return new ObjectWebDataservice<CalElement>(element);
+		return new ObjectWebDataservice<CalDepartment>(model);
     }
 }

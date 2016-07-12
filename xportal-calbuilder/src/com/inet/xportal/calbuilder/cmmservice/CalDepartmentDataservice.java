@@ -13,54 +13,57 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  *****************************************************************/
-package com.inet.xportal.calbuilder.dataservice;
+package com.inet.xportal.calbuilder.cmmservice;
 
 import java.util.Map;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import com.inet.xportal.calbuilder.BuilderConstant;
-import com.inet.xportal.calbuilder.bo.CalDeptBO;
-import com.inet.xportal.calbuilder.model.CalDept;
+import com.inet.xportal.calbuilder.bo.CalDepartmentBO;
+import com.inet.xportal.calbuilder.dataservice.CalBaseAbstraction;
+import com.inet.xportal.calbuilder.model.CalDepartment;
+import com.inet.xportal.nosql.web.NoSQLConstant;
+import com.inet.xportal.nosql.web.data.FirmProfileDTO;
 import com.inet.xportal.nosql.web.data.SearchDTO;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
 import com.inet.xportal.web.annotation.XPortalPageRequest;
 import com.inet.xportal.web.exception.WebOSBOException;
-import com.inet.xportal.web.interfaces.DataServiceMarker;
 import com.inet.xportal.web.interfaces.ObjectWebDataservice;
 import com.inet.xportal.web.interfaces.WebDataService;
-import com.inet.xportal.web.util.SecurityUtil;
+
 
 /**
  * 
- * DepartmentOwnerListDataservice.
+ * CalDepartmentDataservice.
  *
  * @author Hien Nguyen
- * @version $Id: DepartmentOwnerListDataservice.java Apr 28, 2015 5:38:02 PM nguyen_dv $
+ * @version $Id: CalDepartmentDataservice.java Apr 27, 2015 10:01:46 AM nguyen_dv $
  *
  * @since 1.0
  */
-@Named("calbuilderdepartmentownerlist")
-@XPortalDataService(roles={BuilderConstant.ROLE_CALBUILDER}, description = "CalBuilder service")
-@XPortalPageRequest(uri = "calbuilder/department/ownerlist",
+@Named("calbuilderdepartmentlist")
+@XPortalDataService(roles={NoSQLConstant.ROLE_COMMUNITY}, description = "CalBuilder service")
+@XPortalPageRequest(uri = "calbuilder/department/list",
+	inherit = true,
 	result = WebConstant.ACTION_XSTREAM_JSON_RESULT)
-public class DepartmentOwnerListDataservice extends DataServiceMarker {
+public class CalDepartmentDataservice extends CalBaseAbstraction {
 	@Inject
-	private CalDeptBO deptBO;
-	
+	private CalDepartmentBO deptBO;
 	
 	/*
 	 * (non-Javadoc)
-	 * @see com.inet.xportal.web.interfaces.DataServiceMarker#service(com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
+	 * @see com.inet.xportal.calbuilder.dataservice.CalBaseAbstraction#service(com.inet.xportal.nosql.web.data.FirmProfileDTO, com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
 	 */
 	@Override
-    protected WebDataService service(final AbstractBaseAction action, final Map<String, Object> params) throws WebOSBOException {
-		final SearchDTO<CalDept> result = deptBO.query(SecurityUtil.getPrincipal());
+    protected WebDataService service(final FirmProfileDTO subfirm,
+    		final AbstractBaseAction action, 
+    		final Map<String, Object> params) throws WebOSBOException {
+		SearchDTO<CalDepartment> result = deptBO.query(subfirm.getUuid());
 		if (result == null)
-			return new ObjectWebDataservice<SearchDTO<CalDept>>(new SearchDTO<CalDept>());
-		return new ObjectWebDataservice<SearchDTO<CalDept>>(result);
+			result = new SearchDTO<CalDepartment>();
+		return new ObjectWebDataservice<SearchDTO<CalDepartment>>(result);
     }
 }

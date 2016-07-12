@@ -17,7 +17,9 @@ package com.inet.xportal.calbuilder.bo;
 
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -27,31 +29,40 @@ import org.apache.shiro.util.StringUtils;
 
 import com.inet.xportal.calbuilder.data.AttendeeDTO;
 import com.inet.xportal.calbuilder.data.AttendeeRole;
+import com.inet.xportal.calbuilder.data.CalendarType;
+import com.inet.xportal.calbuilder.data.MemberDTO;
 import com.inet.xportal.calbuilder.model.CalElement;
+import com.inet.xportal.calbuilder.util.CalElementUtil;
+import com.inet.xportal.calendar.TimeZoneFactory;
+import com.inet.xportal.calendar.bo.CalHeaderBO;
+import com.inet.xportal.calendar.data.CalAttendee;
+import com.inet.xportal.calendar.data.CalOrganizer;
+import com.inet.xportal.calendar.model.CalHeader;
+import com.inet.xportal.calendar.model.CalLocation;
 import com.inet.xportal.nosql.web.bf.MagicContentBF;
+import com.inet.xportal.nosql.web.bo.AccountBO;
 import com.inet.xportal.nosql.web.bo.MagicContentBO;
 import com.inet.xportal.nosql.web.data.SearchDTO;
-import com.inet.xportal.nosql.web.model.SiteDataModel;
-import com.inet.xportal.unifiedpush.data.TodoActionType;
+import com.inet.xportal.web.action.AbstractBaseAction;
+import com.inet.xportal.web.context.ContentContext;
+import com.inet.xportal.web.context.WebContext;
 import com.inet.xportal.web.exception.WebOSBOException;
-import com.inet.xportal.web.message.CalendarMessage;
+import com.inet.xportal.web.interfaces.BeanInitiateInvoke;
 import com.inet.xportal.xdb.business.BaseDBStore;
 import com.inet.xportal.xdb.persistence.JSONDB;
 import com.inet.xportal.xdb.query.Query;
-import com.inet.xportal.xdb.query.Update;
 import com.inet.xportal.xdb.query.impl.QueryImpl;
-import com.inet.xportal.xdb.query.impl.UpdateImpl;
 
 /**
  * CalElementBO.
- *
+ * 
  * @author Hien Nguyen
  * @version $Id: CalElementBO.java Apr 23, 2015 11:25:46 AM nguyen_dv $
- *
+ * 
  * @since 1.0
  */
 @Named("CalBuilderElementBO")
-public class CalElementBO extends MagicContentBO<CalElement> {
+public class CalElementBO extends MagicContentBO<CalElement> implements BeanInitiateInvoke {
 	/**
 	 * 
 	 * @param businessFacade
@@ -60,235 +71,294 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	 * 
 	 */
 	@Inject
-	protected CalElementBO(MagicContentBF businessFacade) {
+	protected CalElementBO(@ContentContext(context = "CalContext") MagicContentBF businessFacade) {
 		super(businessFacade, "calbuilder-element");
 	}
 
-	/**
-	 * 
-	 * @param info
-	 */
-	public void TimeAdjustWithoutSave(final CalElement info)
-	{
-		final Calendar cal = Calendar.getInstance();
-		cal.set(Calendar.YEAR, info.getYear());
-		cal.set(Calendar.DAY_OF_YEAR, info.getDay());
-		
-		// week and month is auto update
-		info.setMonth(cal.get(Calendar.MONTH) +  1);
-		info.setWeek(cal.get(Calendar.WEEK_OF_YEAR));
-	}
-	
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see com.inet.xportal.nosql.web.bo.MagicContentBO#add(java.lang.Object)
 	 */
 	@Override
-	public String add(CalElement info) throws WebOSBOException
-	{
+	public String add(CalElement info) throws WebOSBOException {
 		final Calendar cal = Calendar.getInstance();
-		
+
 		// year update if missed
 		if (info.getYear() <= 0)
 			info.setYear(cal.get(Calendar.YEAR));
 		else
 			cal.set(Calendar.YEAR, info.getYear());
-		
+
 		// adjust day of this calendar
 		if (info.getDay() <= 0)
 			info.setYear(cal.get(Calendar.DAY_OF_YEAR));
 		else
 			cal.set(Calendar.DAY_OF_YEAR, info.getDay());
-		
+
 		// week and month is auto update
-		TimeAdjustWithoutSave(info);
-		
+		CalElementUtil.TimeAdjustWithoutSave(info);
+
 		return super.add(info);
 	}
-	
+
 	/**
 	 * 
 	 * @param uuid
-	 * @param deptID
 	 * @param usercode
 	 * @return
 	 * @throws WebOSBOException
 	 */
-    public CalElement loadElement(String uuid, 
-    		String deptID, 
-    		String usercode) throws WebOSBOException
-    {
-    	final Query<JSONDB> query = new QueryImpl<JSONDB>()
-    			.field("creatorCode").equal(usercode)
-    			.field("deptUUID").equal(deptID)
-    			.field(BaseDBStore.ID_KEY).equal(BaseDBStore.getId(uuid));
-    	
-    	return super.load((QueryImpl<JSONDB>) query);
-    }
-    
+	public CalElement loadElement(String uuid, 
+			String usercode) throws WebOSBOException {
+		final Query<JSONDB> query = new QueryImpl<JSONDB>()
+				.field(BaseDBStore.ID_KEY).equal(BaseDBStore.getId(uuid));
+
+		query.and(query.or(query.criteria("model").equal(1),
+						   query.and(query.criteria("members.username").equal(usercode),
+								     query.criteria("members.role").equal(AttendeeRole.CREATOR.name()))));
+		
+		return super.load((QueryImpl<JSONDB>) query);
+	}
+
 	/**
 	 * 
-	 * @param deptID
-	 * @param published
-	 * @param year
-	 * @param week
-	 * @param day
-	 * @param allday
+	 * @param uuid
+	 * @param mode
+	 * @param firmUUID
+	 * @param department
 	 * @return
 	 * @throws WebOSBOException
 	 */
-	protected Query<JSONDB> queryBuilder(String deptID,
-			int published,
-			int year, 
-			int week, 
-			int day,
-			int allday) throws WebOSBOException
-	{
+	public CalElement loadElement(String uuid, 
+			int mode,
+			String firmUUID,
+			String department) throws WebOSBOException {
 		final Query<JSONDB> query = new QueryImpl<JSONDB>()
-				.field("year").equal(year)
-				.order("day,startTime")
-				.retrievedFields(false, "attributes");
+				.field("model").equal(mode)
+				.field("firmUUID").equal(firmUUID)
+				.field(BaseDBStore.ID_KEY).equal(BaseDBStore.getId(uuid));
+
+		if (StringUtils.hasLength(department))
+			query.field("departID").equal(department);
 		
-		if (published > 0)
-			query.field("published").equal(published == 1 ? true : false);
-		
-		if (StringUtils.hasLength(deptID))
-			query.field("deptUUID").equal(deptID);
-			
-		if (week > 0)
-			query.field("week").equal(week);
-			
-		if (day > 0)
-			query.field("day").equal(day);
-		
-		// morning only
-		if (allday == 1)
-		{
-			query.field("toTime").lessThanOrEq(720);
-		}
-		// afternoon
-		else if (allday == 2)
-		{
-			query.field("startTime").greaterThanOrEq(720);
-		}
-		
-		return query;
+		return super.load((QueryImpl<JSONDB>) query);
 	}
 	
 	/**
 	 * 
-	 * @param deptID
+	 * @param firmUUID
 	 * @param year
 	 * @param week
 	 * @return
 	 * @throws WebOSBOException
 	 */
-	public SearchDTO<CalElement> publishByFirm(String deptID,
+	public SearchDTO<CalElement> weekCommunity(String firmUUID, 
 			int year, 
-			int week) throws WebOSBOException
-	{
-		// query all items in week
+			int week) throws WebOSBOException {
 		final Query<JSONDB> query = new QueryImpl<JSONDB>()
 				.field("year").equal(year)
 				.field("week").equal(week)
-				.field("published").equal(false)
-				.field("deptUUID").equal(deptID);
+				.field("firmUUID").equal(firmUUID)
+				.field("type").equal(CalendarType.COMMUNITY.name())
+				.field("mode").equal(1)
+				.order("day,startTime");
 		
-		// update with published status
-		final Update<JSONDB> opts = new UpdateImpl<JSONDB>()
-				.set("published", true);
+		return super.query((QueryImpl<JSONDB>) query);
+	}
+	
+	/**
+	 * 
+	 * @param firmUUID
+	 * @param department
+	 * @param year
+	 * @param week
+	 * @param mode
+	 * @return
+	 * @throws WebOSBOException
+	 */
+	public SearchDTO<CalElement> weekFirm(String firmUUID, 
+			String department,
+			int year, 
+			int week,
+			int mode) throws WebOSBOException {
+		final Query<JSONDB> query = new QueryImpl<JSONDB>()
+				.field("year").equal(year)
+				.field("week").equal(week)
+				.field("firmUUID").equal(firmUUID)
+				.order("day,startTime");
 		
-		final SearchDTO<CalElement> result = super.query((QueryImpl<JSONDB>)query);
-		if (result != null && result.getTotal() > 0)
+		if (StringUtils.hasLength(department))
 		{
-			// publish all elements
-			super.update((UpdateImpl<JSONDB>)opts, (QueryImpl<JSONDB>)query);
+			query.field("departID").equal(department)
+				 .field("type").equal(CalendarType.DEPARTMENT.name());
+		}
+		else if (mode != 1)
+		{
+			query.field("type").in(CollectionUtils.asList(CalendarType.ORGANIZATION.name(),
+					  									  CalendarType.COMMUNITY.name()));
+		}
+		else
+		{
+			query.field("type").equal(CalendarType.ORGANIZATION.name());
 		}
 		
-		return result;
-	}
-	
-	/**
-	 * 
-	 * @param deptID
-	 * @param year
-	 * @param week
-	 * @param day
-	 * @param allday
-	 * @return
-	 * @throws WebOSBOException
-	 */
-	public SearchDTO<CalElement> queryByReviewed(String deptID,
-			int year, 
-			int week, 
-			int day,
-			int allday) throws WebOSBOException
-	{
-		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, 0, year, week, day, allday));
-	}
-	
-	/**
-	 * 
-	 * @param deptID
-	 * @param year
-	 * @param week
-	 * @param day
-	 * @param allday
-	 * @return
-	 * @throws WebOSBOException
-	 */
-	public SearchDTO<CalElement> queryByPublished(String deptID,
-			int year, 
-			int week, 
-			int day,
-			int allday) throws WebOSBOException
-	{
-		return super.query((QueryImpl<JSONDB>)queryBuilder(deptID, 1, year, week, day,allday));
-	}
-	
-	/**
-	 * 
-	 * @param scopeShow
-	 * @param year
-	 * @param week
-	 * @param day
-	 * @param allday
-	 * @return
-	 * @throws WebOSBOException
-	 */
-	public SearchDTO<CalElement> queryByMainboard(String scopeShow, int year, int week, int day, int allday) throws WebOSBOException
-	{
-		final Query<JSONDB> query = queryBuilder(StringUtils.EMPTY_STRING, 
-				1, 
-				year, 
-				week, 
-				day,allday);
+		// status of calendar
+		if (mode >= 0)
+			query.field("mode").equal(mode);
 		
-		if (StringUtils.hasLength(scopeShow))
-			query.field("scopeShow").equal(scopeShow);
+		return super.query((QueryImpl<JSONDB>) query);
+	}
+	
+	/**
+	 * 
+	 * @param firmUUID
+	 * @param department
+	 * @param year
+	 * @param day
+	 * @param mode
+	 * @return
+	 * @throws WebOSBOException
+	 */
+	public SearchDTO<CalElement> dayFirm(String firmUUID, 
+			String department,
+			int year, 
+			int day,
+			int mode) throws WebOSBOException {
+		final Query<JSONDB> query = new QueryImpl<JSONDB>()
+				.field("year").equal(year)
+				.field("day").equal(day)
+				.field("firmUUID").equal(firmUUID)
+				.order("startTime");
+		
+		if (StringUtils.hasLength(department))
+		{
+			query.field("departID").equal(department)
+				 .field("type").equal(CalendarType.DEPARTMENT.name());
+		}
+		else if (mode != 1)
+		{
+			query.field("type").in(CollectionUtils.asList(CalendarType.ORGANIZATION.name(),
+					  									  CalendarType.COMMUNITY.name()));
+		}
 		else
-			query.field("scopeShow").notEqual(StringUtils.EMPTY_STRING);
+		{
+			query.field("type").equal(CalendarType.ORGANIZATION.name());
+		}
 		
-		return super.query((QueryImpl<JSONDB>)query);
+		// status of calendar
+		if (mode >= 0)
+			query.field("mode").equal(mode);
+		
+		return super.query((QueryImpl<JSONDB>) query);
 	}
+	
+	/**
+	 * 
+	 * @param member
+	 * @param year
+	 * @param week
+	 * @return
+	 * @throws WebOSBOException
+	 */
+	public SearchDTO<CalElement> weekFreeBusy(String member, 
+			int year, 
+			int week) throws WebOSBOException {
+		final Query<JSONDB> query = new QueryImpl<JSONDB>()
+				.field("year").equal(year)
+				.field("mode").equal(1)
+				.field("week").equal(week)
+				.field("members.username").equal(member)
+				.order("day,startTime")
+				.retrievedFields(false, "members");
+
+		return super.query((QueryImpl<JSONDB>) query);
+	}
+
+	/**
+	 * 
+	 * @param members
+	 * @param year
+	 * @param week
+	 * @return
+	 * @throws WebOSBOException
+	 */
+	public SearchDTO<CalElement> weekFreeBusy(final List<String> members, 
+			int year, 
+			int week) throws WebOSBOException {
+		final Query<JSONDB> query = new QueryImpl<JSONDB>()
+				.field("year").equal(year)
+				.field("mode").equal(1)
+				.field("week").equal(week)
+				.field("members.username").in(members)
+				.order("day,startTime")
+				.retrievedFields(false, "members");
+
+		return super.query((QueryImpl<JSONDB>) query);
+	}
+	
+	/**
+	 * 
+	 * @param member
+	 * @param year
+	 * @param day
+	 * @return
+	 * @throws WebOSBOException
+	 */
+	public SearchDTO<CalElement> dayFreeBusy(String member, 
+			int year, 
+			int day) throws WebOSBOException {
+		final Query<JSONDB> query = new QueryImpl<JSONDB>()
+				.field("year").equal(year)
+				.field("mode").equal(1)
+				.field("day").equal(day)
+				.field("members.username").equal(member)
+				.order("startTime")
+				.retrievedFields(false, "members");
+
+		return super.query((QueryImpl<JSONDB>) query);
+	}
+
+	/**
+	 * 
+	 * @param members
+	 * @param year
+	 * @param day
+	 * @return
+	 * @throws WebOSBOException
+	 */
+	public SearchDTO<CalElement> dayFreeBusy(final List<String> members, 
+			int year, 
+			int day) throws WebOSBOException {
+		final Query<JSONDB> query = new QueryImpl<JSONDB>()
+				.field("year").equal(year)
+				.field("mode").equal(1)
+				.field("day").equal(day)
+				.field("members.username").in(members)
+				.order("startTime")
+				.retrievedFields(false, "members");
+
+		return super.query((QueryImpl<JSONDB>) query);
+	}
+	
 	
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see com.inet.xportal.nosql.web.bo.SQLMagicBase#getClassConvetor()
 	 */
 	@Override
-    protected Class<CalElement> getClassConvetor() {
-	    return CalElement.class;
-    }
-	
+	protected Class<CalElement> getClassConvetor() {
+		return CalElement.class;
+	}
+
 	// this map will help object convert all children data
 	static Map<String, Class<?>> childrenConvert;
 	static {
 		childrenConvert = new HashMap<String, Class<?>>();
 		childrenConvert.put("members", AttendeeDTO.class);
-		childrenConvert.put("observers", AttendeeDTO.class);
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -298,68 +368,165 @@ public class CalElementBO extends MagicContentBO<CalElement> {
 	protected Map<String, Class<?>> childrenConvertMap() {
 		return childrenConvert;
 	}
-	
+
 	/**
 	 * 
 	 * @param element
+	 * @param action
+	 * @throws Throwable
 	 */
-	public CalendarMessage calendarBuilder(final CalElement element, final SiteDataModel siteInf)
+	public void calendarBuilder(final CalElement element, final AbstractBaseAction action) throws Throwable 
 	{
 		// don't need to build this calendar
 		if (CollectionUtils.isEmpty(element.getMembers()))
-			return null;
+			return;
+
+		final CalHeader message = new CalHeader();
 		
-		final CalendarMessage message = new CalendarMessage();
-		message.setAction(TodoActionType.CREATE.name());
-		
+		TimeZone timezone = TimeZoneFactory.INSTANCE.factory().getDefaultTimeZone();
+		message.setTzId(timezone.getID());
+		message.setUuid(element.getCaldavRef());
+		// update firm context to this calendar
+		message.setFirmshare(element.getFirmPrefix());
+			
+		final AccountBO accountBO = WebContext.INSTANCE.cache().getBean(AccountBO.class);
+		final Map<String,String> members = new HashMap<String, String>();
 		// add member into this meeting
-		for (AttendeeDTO member : element.getMembers())
-		{
-			if (AttendeeRole.MEMBER.name().equals(member.getRole()))
-			{
-				message.getMembers().add(member.getCode());
+		for (AttendeeDTO member : element.getMembers()) {
+			if (AttendeeRole.MEMBER.name().equals(member.getRole()) ||
+				AttendeeRole.OBSERVER.name().equals(member.getRole())) {
+				// check user is validated in global firm
+				if (!CollectionUtils.isEmpty(member.getMembers()))
+				{
+					for (MemberDTO item : member.getMembers())
+					{
+						if (members.containsKey(item.getUsername()))
+						{
+							if (StringUtils.hasLength(item.getUsername()) &&
+								accountBO.globalExisted(item.getUsername()))
+							{
+								final CalAttendee attendee = new CalAttendee();
+								attendee.setCn(item.getFullname());
+								attendee.setEmailAddress(item.getUsername());
+								attendee.setUri("mailto:" + item.getUsername());
+								
+								message.getAttendees().add(attendee);
+								
+								members.put(item.getUsername(), item.getFullname());
+							}
+						}
+					}
+				}
+			} 
+			else if (AttendeeRole.CHAIRMAN.name().equals(member.getRole())) {
+				// check user is validated in global firm
+				if (!CollectionUtils.isEmpty(member.getMembers()))
+				{
+					for (MemberDTO item : member.getMembers())
+					{
+						if (StringUtils.hasLength(item.getUsername()) &&
+							 accountBO.globalExisted(item.getUsername()))
+						{
+							final CalOrganizer org = new CalOrganizer();
+							org.setCn(item.getFullname());
+							org.setEmailAddress(item.getUsername());
+							org.setUri("mailto:" + item.getUsername());
+							message.setOrganizer(org);
+							
+							break;
+						}
+					}
+				}
+			}
+			else if (AttendeeRole.CREATOR.name().equals(member.getRole())) {
+				// check user is validated in global firm
+				if (!CollectionUtils.isEmpty(member.getMembers()))
+				{
+					for (MemberDTO item : member.getMembers())
+					{
+						message.setCreator(item.getUsername());
+						message.setFullname(item.getFullname());
+						break;
+					}
+				}
 			}
 		}
+
+		// there is no member to create this calendar
+		if (CollectionUtils.isEmpty(message.getAttendees()))
+			return;
 		
-		if (CollectionUtils.isEmpty(message.getMembers()))
-			return null;
-		
-		// chairman
-		if (StringUtils.hasLength(element.getChairmanCode()))
-			message.setChairman(element.getChairmanCode());
-		else
-			message.setChairman(element.getChairmanName());
+		// default, orgnizer is creator
+		if (message.getOrganizer() == null ||
+			!StringUtils.hasLength(message.getOrganizer().getEmailAddress()))
+		{
+			final CalOrganizer org = new CalOrganizer();
+			org.setCn(message.getFullname());
+			org.setEmailAddress(message.getCreator());
+			org.setUri("mailto:" + message.getCreator());
+			message.setOrganizer(org);
+		}
 		
 		// the subject of meeting
-		message.setSubject(element.getSubject());
-		
+		message.setSummary(element.getSubject());
+
 		// description
-		message.setSummary(element.getSummary());
-		// location
-		message.setLocation(element.getLocation());
-		// who create this meeting
-		message.setCreator(element.getCreatorCode());
+		message.setDescription(element.getSummary());
 		
-		message.setFirmContext(siteInf.getFirmContext());
-		message.setFirmName(siteInf.getName());
-		message.setFirmSharedDomain(siteInf.getShareDomain());
-		message.setRefTodoID(element.getUuid());
+		// location
+		if (StringUtils.hasLength(element.getLocation()))
+		{
+			CalLocation loc = new CalLocation();
+			loc.setAddress(element.getLocation());
+			message.setLocation(loc);
+		}
 		
 		Calendar cal = Calendar.getInstance();
-		cal.set(Calendar.YEAR,element.getYear());
-		cal.set(Calendar.DAY_OF_YEAR,element.getDay());
+		cal.set(Calendar.YEAR, element.getYear());
+		cal.set(Calendar.DAY_OF_YEAR, element.getDay());
+
+		cal.set(Calendar.HOUR_OF_DAY, (int) (element.getStartTime() / 60));
+		cal.set(Calendar.MINUTE, element.getStartTime() % 60);
 		
-		cal.set(Calendar.HOUR_OF_DAY,(int)(element.getStartTime() / 60));
-		cal.set(Calendar.MINUTE,element.getStartTime() % 60);
+		message.setCreated(cal.getTimeInMillis());
+		
 		// start time of this calendar
-		message.setStartdate(cal.getTimeInMillis());
-		
-		cal.set(Calendar.HOUR_OF_DAY,(int)(element.getToTime() / 60));
-		cal.set(Calendar.MINUTE,element.getToTime() % 60);
-		
+		message.setLstart(cal.getTimeInMillis());
+
+		cal.set(Calendar.HOUR_OF_DAY, (int) (element.getToTime() / 60));
+		cal.set(Calendar.MINUTE, element.getToTime() % 60);
+
 		// end time fo this calendar
-		message.setEnddate(cal.getTimeInMillis());
+		message.setLend(cal.getTimeInMillis());
+
+		try 
+		{
+			final CalHeader header0 = WebContext.INSTANCE.cache()
+					.getBean(CalHeaderBO.class)
+					.calendarMessage(message, action);
+			if (header0 != null)
+			{
+				element.setCaldavRef(header0.getUuid());
+			}
+        } catch (Throwable ex) {
+        	throw ex;
+        }
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.inet.xportal.web.interfaces.BeanInitiateInvoke#init()
+	 */
+	@Override
+	public void init() {
+		ensureIndex("firmUUID,type,mode,year,day");
+		ensureIndex("firmUUID,type,mode,year,week");
+
+		ensureIndex("firmUUID,departID,type,mode,year,day");
+		ensureIndex("firmUUID,departID,type,mode,year,week");
 		
-		return message;
+		ensureIndex("mode,year,week,members");
+		ensureIndex("mode,year,day,members");
 	}
 }

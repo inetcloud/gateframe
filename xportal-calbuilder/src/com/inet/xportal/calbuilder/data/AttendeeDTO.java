@@ -15,53 +15,48 @@
  *****************************************************************/
 package com.inet.xportal.calbuilder.data;
 
+import com.inet.xportal.calendar.data.PartStat;
+
 /**
  * 
  * AttendeeDTO.
- *
+ * 
  * @author Hien Nguyen
  * @version $Id: AttendeeDTO.java Apr 23, 2015 9:00:15 AM nguyen_dv $
- *
+ * 
  * @since 1.0
  */
-public class AttendeeDTO {
-	private String code;
+public class AttendeeDTO extends MemberAlias {
+	private String state = PartStat.ACCEPTED.name();
+	// role of each member in this calendar
 	private String role = AttendeeRole.MEMBER.name();
-	private String name;
-
-	public String getCode() {
-		return code;
+	
+	/**
+	 * @return the state
+	 */
+	public String getState() {
+		return state;
 	}
 
-	public void setCode(String code) {
-		this.code = code;
+	/**
+	 * @param state
+	 *            the state to set
+	 */
+	public void setState(String state) {
+		this.state = state;
 	}
 
+	/**
+	 * @return the role
+	 */
 	public String getRole() {
 		return role;
 	}
 
+	/**
+	 * @param role the role to set
+	 */
 	public void setRole(String role) {
 		this.role = role;
 	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
-	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
-	@Override
-    public boolean equals(Object obj) {
-	    if (obj == null || !(obj instanceof AttendeeDTO))
-	    	return false;
-	    // usercode is unique
-	    return code.equals(((AttendeeDTO)obj).code);
-    }
 }

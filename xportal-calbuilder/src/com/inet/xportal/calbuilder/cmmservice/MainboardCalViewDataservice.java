@@ -13,21 +13,27 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  *****************************************************************/
-package com.inet.xportal.calbuilder.dataservice;
+package com.inet.xportal.calbuilder.cmmservice;
 
-import java.util.Calendar;
 import java.util.Map;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import org.apache.shiro.util.StringUtils;
+
 import com.inet.xportal.calbuilder.bo.CalElementBO;
 import com.inet.xportal.calbuilder.model.CalElement;
+import com.inet.xportal.calbuilder.util.CalElementUtil;
+import com.inet.xportal.nosql.web.bo.SiteBO;
+import com.inet.xportal.nosql.web.bo.SubFirmProfileBO;
+import com.inet.xportal.nosql.web.data.FirmProfileDTO;
 import com.inet.xportal.nosql.web.data.SearchDTO;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
 import com.inet.xportal.web.annotation.XPortalPageRequest;
+import com.inet.xportal.web.context.WebContext;
 import com.inet.xportal.web.exception.WebOSBOException;
 import com.inet.xportal.web.interfaces.DataServiceMarker;
 import com.inet.xportal.web.interfaces.ObjectWebDataservice;
@@ -39,30 +45,63 @@ import com.inet.xportal.web.util.XParamUtils;
  * MainboardCalViewDataservice.
  *
  * @author Hien Nguyen
- * @version $Id: MainboardCalViewDataservice.java Apr 23, 2015 2:10:25 PM nguyen_dv $
+ * @version $Id: MainboardCalViewDataservice.java Jul 12, 2016 5:45:22 PM nguyen_dv $
  *
  * @since 1.0
  */
 @Named("calbuildermainboardview")
-@XPortalDataService(description = "CalBuilder service")
-@XPortalPageRequest(uri = "calbuilder/mainboard/view", result = WebConstant.ACTION_XSTREAM_JSON_RESULT)
+@XPortalDataService(roles={WebConstant.ROLE_COMMUNITY}, description = "CalDepartment service")
+@XPortalPageRequest(uri = "calbuilder/mainboard/view",
+	inherit = true,
+	result = WebConstant.ACTION_XSTREAM_JSON_RESULT)
 public class MainboardCalViewDataservice extends DataServiceMarker {
 	@Inject
 	private CalElementBO elementBO;
 	
+	@Inject
+	private SubFirmProfileBO subfirmBO;
 	/*
 	 * (non-Javadoc)
 	 * @see com.inet.xportal.web.interfaces.DataServiceMarker#service(com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
 	 */
 	@Override
     protected WebDataService service(final AbstractBaseAction action, final Map<String, Object> params) throws WebOSBOException {
-		final Calendar cal = Calendar.getInstance();
-		return new ObjectWebDataservice<SearchDTO<CalElement>>(
-	    		elementBO.queryByMainboard(
-	    			XParamUtils.getString("scope", params),
-	    			XParamUtils.getInteger("year",params,cal.get(Calendar.YEAR)),
-		    		XParamUtils.getInteger("week",params,cal.get(Calendar.WEEK_OF_YEAR)), 
-		    		-1, 
-		    		XParamUtils.getInteger("allday",params,0)));
+		FirmProfileDTO subfirm = subfirmBO.loadByPrefix(action.getFirmPrefix());
+		if (subfirm == null)
+		{
+			subfirm = WebContext.INSTANCE.cache()
+			.getBean(SiteBO.class)
+			.load(action.getSiteID());
+			
+			subfirm.setPrefix(WebContext.INSTANCE.cache().getWebContext());
+		}
+		
+		SearchDTO<CalElement> result = null;
+		int[] ymwd = CalElementUtil.ymwd();
+		// get current year (if missed)
+		int year = XParamUtils.getInteger("year", params, ymwd[0]);
+		// get day report
+		int day = XParamUtils.getInteger("day", params, -1);
+		if (day == -1)
+		{
+			// get current week (if missed)
+			result = elementBO.weekFirm(subfirm.getUuid(),
+					StringUtils.EMPTY_STRING,
+					year, 
+					XParamUtils.getInteger("week", params, ymwd[2]), 
+					1);
+		}
+		else {
+			result = elementBO.dayFirm(subfirm.getUuid(),
+					StringUtils.EMPTY_STRING,
+					year, 
+					day, 
+					1);
+		}
+		
+		if (result == null)
+			result = new SearchDTO<CalElement>();
+		
+		return new ObjectWebDataservice<SearchDTO<CalElement>>(result);
     }
 }

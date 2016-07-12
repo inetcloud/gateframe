@@ -18,11 +18,8 @@ package com.inet.xportal.calbuilder.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.json.JSONObject;
-
-import org.apache.shiro.util.StringUtils;
-
 import com.inet.xportal.calbuilder.data.AttendeeDTO;
+import com.inet.xportal.calbuilder.data.CalendarType;
 
 /**
  * CalElement.
@@ -34,217 +31,318 @@ import com.inet.xportal.calbuilder.data.AttendeeDTO;
  */
 public class CalElement {
 	private String uuid;
+	// reference of firm or subfirm (UUID)
+	private String firmUUID;
+	private String firmName;
+	private String firmPrefix;
 	
-	// name of department (ref to CalDept)
-	private String deptUUID;
-	// limit of show this calendar
-	// will be displayed from main board
-	private String scopeShow = StringUtils.EMPTY_STRING;
-	// status of this element (to be in reviewed list or published)
-	private boolean published = false;
+	// and (optional) in department
+	private String departID;
+	private String departName;
+	
+	// uuid of calendar from personal calendar
+	// It means, caldav created
+	private String caldavRef;
+	
+	// mode has 3 values {0,1,2}
+	private int mode = 0;
+
 	private int year;
 	private int month;
 	private int week;
 	private int day;
+
+	private String subject;
+	private String location;
+	private String summary;
 	// in minutes. i.e from 7:30 = (7 x 60) + 30
 	private int startTime;
 	// in minutes. i.e to 9:00 = (9 x 60)
 	private int toTime;
-	private String creatorCode;
-	private String creatorName;
 	
-	private String chairmanCode;
-	private String chairmanName;
-	
-	// content prepare owner (who/ firm will be played as content master)
-	private String contentOwner;
-	private String subject;
-	private String location;
-	private String summary;
-	// more attributes needed
-	private JSONObject attributes = new JSONObject();
-	
-	// members who attend to this meeting
-	private String memberBrief;
-	// members who observe this meeting
-	private String observerBrief;
+	// type of calendar (3 types supported)
+	private String type = CalendarType.ORGANIZATION.name();
 	
 	// list of members build from request
 	private List<AttendeeDTO> members = new ArrayList<AttendeeDTO>();
 
+	/**
+	 * @return the uuid
+	 */
 	public String getUuid() {
 		return uuid;
 	}
 
+	/**
+	 * @param uuid
+	 *            the uuid to set
+	 */
 	public void setUuid(String uuid) {
 		this.uuid = uuid;
 	}
 
-	public String getDeptUUID() {
-		return deptUUID;
+	/**
+	 * @return the firmUUID
+	 */
+	public String getFirmUUID() {
+		return firmUUID;
 	}
 
-	public void setDeptUUID(String deptUUID) {
-		this.deptUUID = deptUUID;
+	/**
+	 * @param firmUUID
+	 *            the firmUUID to set
+	 */
+	public void setFirmUUID(String firmUUID) {
+		this.firmUUID = firmUUID;
 	}
 
-	public String getScopeShow() {
-		return scopeShow;
+	/**
+	 * @return the firmName
+	 */
+	public String getFirmName() {
+		return firmName;
 	}
 
-	public void setScopeShow(String scopeShow) {
-		this.scopeShow = scopeShow;
+	/**
+	 * @param firmName
+	 *            the firmName to set
+	 */
+	public void setFirmName(String firmName) {
+		this.firmName = firmName;
 	}
 
-	public boolean isPublished() {
-		return published;
+	/**
+	 * @return the firmPrefix
+	 */
+	public String getFirmPrefix() {
+		return firmPrefix;
 	}
 
-	public void setPublished(boolean published) {
-		this.published = published;
+	/**
+	 * @param firmPrefix the firmPrefix to set
+	 */
+	public void setFirmPrefix(String firmPrefix) {
+		this.firmPrefix = firmPrefix;
 	}
 
+	/**
+	 * @return the departID
+	 */
+	public String getDepartID() {
+		return departID;
+	}
+
+	/**
+	 * @param departID the departID to set
+	 */
+	public void setDepartID(String departID) {
+		this.departID = departID;
+	}
+
+	/**
+	 * @return the departName
+	 */
+	public String getDepartName() {
+		return departName;
+	}
+
+	/**
+	 * @param departName the departName to set
+	 */
+	public void setDepartName(String departName) {
+		this.departName = departName;
+	}
+
+	/**
+	 * @return the caldavRef
+	 */
+	public String getCaldavRef() {
+		return caldavRef;
+	}
+
+	/**
+	 * @param caldavRef the caldavRef to set
+	 */
+	public void setCaldavRef(String caldavRef) {
+		this.caldavRef = caldavRef;
+	}
+
+	/**
+	 * @return the mode
+	 */
+	public int getMode() {
+		return mode;
+	}
+
+	/**
+	 * @param mode the mode to set
+	 */
+	public void setMode(int mode) {
+		this.mode = mode;
+	}
+
+	/**
+	 * @return the year
+	 */
 	public int getYear() {
 		return year;
 	}
 
+	/**
+	 * @param year
+	 *            the year to set
+	 */
 	public void setYear(int year) {
 		this.year = year;
 	}
 
+	/**
+	 * @return the month
+	 */
 	public int getMonth() {
 		return month;
 	}
 
+	/**
+	 * @param month
+	 *            the month to set
+	 */
 	public void setMonth(int month) {
 		this.month = month;
 	}
 
+	/**
+	 * @return the week
+	 */
 	public int getWeek() {
 		return week;
 	}
 
+	/**
+	 * @param week
+	 *            the week to set
+	 */
 	public void setWeek(int week) {
 		this.week = week;
 	}
 
+	/**
+	 * @return the day
+	 */
 	public int getDay() {
 		return day;
 	}
 
+	/**
+	 * @param day
+	 *            the day to set
+	 */
 	public void setDay(int day) {
 		this.day = day;
 	}
 
-	public String getCreatorCode() {
-		return creatorCode;
-	}
-
-	public void setCreatorCode(String creatorCode) {
-		this.creatorCode = creatorCode;
-	}
-
-	public String getCreatorName() {
-		return creatorName;
-	}
-
-	public void setCreatorName(String creatorName) {
-		this.creatorName = creatorName;
-	}
-
-	public int getStartTime() {
-		return startTime;
-	}
-
-	public void setStartTime(int startTime) {
-		this.startTime = startTime;
-	}
-
-	public int getToTime() {
-		return toTime;
-	}
-
-	public void setToTime(int toTime) {
-		this.toTime = toTime;
-	}
-
-	public String getChairmanCode() {
-		return chairmanCode;
-	}
-
-	public void setChairmanCode(String chairmanCode) {
-		this.chairmanCode = chairmanCode;
-	}
-
-	public String getChairmanName() {
-		return chairmanName;
-	}
-
-	public void setChairmanName(String chairmanName) {
-		this.chairmanName = chairmanName;
-	}
-
-	public String getContentOwner() {
-		return contentOwner;
-	}
-
-	public void setContentOwner(String contentOwner) {
-		this.contentOwner = contentOwner;
-	}
-
+	/**
+	 * @return the subject
+	 */
 	public String getSubject() {
 		return subject;
 	}
 
+	/**
+	 * @param subject
+	 *            the subject to set
+	 */
 	public void setSubject(String subject) {
 		this.subject = subject;
 	}
 
+	/**
+	 * @return the location
+	 */
 	public String getLocation() {
 		return location;
 	}
 
+	/**
+	 * @param location
+	 *            the location to set
+	 */
 	public void setLocation(String location) {
 		this.location = location;
 	}
 
+	/**
+	 * @return the summary
+	 */
 	public String getSummary() {
 		return summary;
 	}
 
+	/**
+	 * @param summary
+	 *            the summary to set
+	 */
 	public void setSummary(String summary) {
 		this.summary = summary;
 	}
 
-	public JSONObject getAttributes() {
-		return attributes;
+	/**
+	 * @return the type
+	 */
+	public String getType() {
+		return type;
 	}
 
-	public void setAttributes(JSONObject attributes) {
-		this.attributes = attributes;
+	/**
+	 * @param type
+	 *            the type to set
+	 */
+	public void setType(String type) {
+		this.type = type;
 	}
 
-	public String getMemberBrief() {
-		return memberBrief;
+	/**
+	 * @return the startTime
+	 */
+	public int getStartTime() {
+		return startTime;
 	}
 
-	public void setMemberBrief(String memberBrief) {
-		this.memberBrief = memberBrief;
+	/**
+	 * @param startTime
+	 *            the startTime to set
+	 */
+	public void setStartTime(int startTime) {
+		this.startTime = startTime;
 	}
 
+	/**
+	 * @return the toTime
+	 */
+	public int getToTime() {
+		return toTime;
+	}
+
+	/**
+	 * @param toTime
+	 *            the toTime to set
+	 */
+	public void setToTime(int toTime) {
+		this.toTime = toTime;
+	}
+
+	/**
+	 * @return the members
+	 */
 	public List<AttendeeDTO> getMembers() {
 		return members;
 	}
 
+	/**
+	 * @param members
+	 *            the members to set
+	 */
 	public void setMembers(List<AttendeeDTO> members) {
 		this.members = members;
-	}
-
-	public String getObserverBrief() {
-		return observerBrief;
-	}
-
-	public void setObserverBrief(String observerBrief) {
-		this.observerBrief = observerBrief;
 	}
 }

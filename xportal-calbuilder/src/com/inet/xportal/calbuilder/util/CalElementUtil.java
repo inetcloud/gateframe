@@ -15,6 +15,8 @@
  *****************************************************************/
 package com.inet.xportal.calbuilder.util;
 
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -23,8 +25,13 @@ import net.sf.json.JSONObject;
 
 import org.apache.shiro.util.StringUtils;
 
+import com.inet.xportal.calbuilder.bo.AliasIndexBO;
 import com.inet.xportal.calbuilder.data.AttendeeDTO;
 import com.inet.xportal.calbuilder.data.AttendeeRole;
+import com.inet.xportal.calbuilder.data.MemberDTO;
+import com.inet.xportal.calbuilder.model.AliasIndex;
+import com.inet.xportal.calbuilder.model.CalElement;
+import com.inet.xportal.calendar.data.PartStat;
 import com.inet.xportal.web.util.XParamUtils;
 
 /**
@@ -38,39 +45,77 @@ import com.inet.xportal.web.util.XParamUtils;
 public class CalElementUtil {
 	/**
 	 * 
-	 * @param attribute
-	 * @param params
+	 * @param info
 	 */
-	public static void attributeUpdate(final JSONObject attribute, 
-			final Map<String, Object> params)
+	public static void TimeAdjustWithoutSave(final CalElement info)
 	{
-		for (String param : params.keySet())
-		{
-			final Object value = params.get(param);
-			if (param.startsWith("_"))
-			{
-				if (value != null)
-				{
-					attribute.put(param.substring(1), value);
-				}
-				else if (attribute.has(param.substring(1)))
-				{
-					attribute.remove(param.substring(1));
-				}
-			}
-		}
+		final Calendar cal = Calendar.getInstance();
+		
+		if (info.getYear() > 0)
+			cal.set(Calendar.YEAR, info.getYear());
+		
+		if (info.getDay() > 0)
+			cal.set(Calendar.DAY_OF_YEAR, info.getDay());
+		
+		if (info.getWeek() > 0)
+			cal.set(Calendar.WEEK_OF_YEAR, info.getWeek());
+		
+		info.setYear(cal.get(Calendar.YEAR));
+		info.setMonth(cal.get(Calendar.MONTH) +  1);
+		info.setWeek(cal.get(Calendar.WEEK_OF_YEAR));
+		info.setDay(cal.get(Calendar.DAY_OF_YEAR));
+		
+		// adjust time of this element
+		if (info.getStartTime() <= 0)
+			info.setStartTime(cal.get(Calendar.HOUR_OF_DAY) * 60);
+		
+		// get time of this field (as required)
+		// defaul is 1 hour meeting
+		if (info.getToTime() <= 0 || 
+			info.getToTime() <= info.getStartTime())
+			info.setToTime(info.getStartTime() + 60);
 	}
 	
 	/**
 	 * 
-	 * @param arrlist
+	 * @param time
+	 * @return
+	 */
+	public static int[] ymwd()
+	{
+		return ymwd(new Date());
+	}
+	
+	/**
+	 * 
+	 * @param time
+	 * @return
+	 */
+	public static int[] ymwd(Date time)
+	{
+		final Calendar cal = Calendar.getInstance();
+		cal.setTime(time);
+		
+		return new int[]{cal.get(Calendar.YEAR),
+				cal.get(Calendar.MONTH) + 1,
+				cal.get(Calendar.WEEK_OF_YEAR),
+				cal.get(Calendar.DAY_OF_YEAR)};
+	}
+	
+	/**
+	 * 
+	 * @param aliasBO
+	 * @param element
 	 * @param params
 	 */
-	public static void attendeeUpdate(final List<AttendeeDTO> arrlist, final Map<String, Object> params)
+	public static void attendeeUpdate(final AliasIndexBO aliasBO,
+			final CalElement element, 
+			final Map<String, Object> params)
 	{
 		if (params.containsKey("attendee"))
 		{
-			arrlist.clear();
+			element.getMembers().clear();
+			
 			// get members of this project
 			String members = XParamUtils.getString("attendee", params);
 			if (StringUtils.hasLength(members))
@@ -79,61 +124,177 @@ public class CalElementUtil {
 				final JSONObject json = JSONObject.fromObject("{items:" + members +"}");
 				
 				// attendee builder
-				attendeeUpdate(arrlist, json.get("items"));
+				final Object val = json.get("items");
+				if (val instanceof JSONArray)
+				{
+					int size = ((JSONArray)val).size();
+					for (int index = 0; index <  size; index++)
+					{
+						attendeeBuilder(aliasBO, element.getFirmUUID(), element.getMembers(), ((JSONArray)val).getJSONObject(index));
+					}
+				}
+				else if (val instanceof JSONObject) {
+					attendeeBuilder(aliasBO, element.getFirmUUID(), element.getMembers(), (JSONObject)val);
+				}
 			}
 		}
 	}
 	
 	/**
 	 * 
+	 * @param aliasBO
+	 * @param firmUUID
 	 * @param arrlist
-	 * @param val
+	 * @param json
 	 */
-	public static void attendeeUpdate(final List<AttendeeDTO> arrlist, final Object val)
+	public static void attendeeBuilder(final AliasIndexBO aliasBO,
+			String firmUUID,
+			final List<AttendeeDTO> arrlist, 
+			final JSONObject json)
 	{
-		if (val instanceof JSONArray)
+		if (json != null && 
+			(json.has("alias") || json.has("members")))
 		{
-			int size = ((JSONArray)val).size();
-			for (int index = 0; index <  size; index++)
+			final AttendeeDTO resource = new AttendeeDTO();
+			
+			if (json.has("alias"))
 			{
-				attendeeBuilder(arrlist, ((JSONArray)val).getJSONObject(index));
+				resource.setAlias(json.getString("alias"));
+				
+				AliasIndex alias = aliasBO.loadByAlias(firmUUID, resource.getAlias());
+				if (alias == null)
+				{
+					alias = new AliasIndex();
+					// build this alias to database
+					alias.setAlias(resource.getAlias());
+					alias.setFirmUUID(firmUUID);
+					
+					// gte member of this alias
+					if (json.has("members"))
+					{
+						memberBuilder(alias.getMembers(), json);
+						
+						// save this alias
+						aliasBO.add(alias);
+						
+						// add resource member
+						resource.setMembers(alias.getMembers());
+					}
+				}
+				else
+				{
+					resource.setMembers(alias.getMembers());
+				}
 			}
-		}
-		else if (val instanceof JSONObject) {
-			attendeeBuilder(arrlist, (JSONObject)val);
+			else
+			{
+				memberBuilder(resource.getMembers(), json);
+				
+				// get the fist user in this member 
+				resource.setAlias(resource.getMembers().get(0).getFullname());
+			}
+			
+			// role data for this resource
+			if (json.has("role"))
+			{
+				String role = json.getString("role");
+				if (AttendeeRole.OBSERVER.name().equalsIgnoreCase(role))
+					resource.setRole(AttendeeRole.OBSERVER.name());
+				else if (AttendeeRole.CHAIRMAN.name().equalsIgnoreCase(role))
+					resource.setRole(AttendeeRole.CHAIRMAN.name());
+				else
+					resource.setRole(AttendeeRole.MEMBER.name());
+			}
+			else
+			{
+				resource.setRole(AttendeeRole.MEMBER.name());
+			}
+			
+			resource.setState(PartStat.ACCEPTED.name());
+			
+			arrlist.add(resource);
 		}
 	}
 	
 	/**
 	 * 
-	 * @param item
+	 * @param member
 	 * @param json
-	 * @return
 	 */
-	public static void attendeeBuilder(final List<AttendeeDTO> arrlist, final JSONObject json)
+	public static void memberBuilder(final List<MemberDTO> list, final JSONObject json)
 	{
-		final AttendeeDTO resource = new AttendeeDTO();
-		resource.setCode(json.getString("usercode"));
-		
-		// remove current resource in this list
-		arrlist.remove(resource);
-		
-		// name of resource
-		if (json.has("name"))
-			resource.setName(json.getString("name"));
-		
-		// role data for this resource
-		if (json.has("role"))
+		if (json.has("members"))
 		{
-			String role = json.getString("role");
-			if (AttendeeRole.MEMBER.name().equalsIgnoreCase(role))
-				resource.setRole(AttendeeRole.MEMBER.name());
-			else if (AttendeeRole.CHAIRMAN.name().equalsIgnoreCase(role))
-				resource.setRole(AttendeeRole.CHAIRMAN.name());
-			else
-				resource.setRole(AttendeeRole.OBSERVER.name());
+			String members = json.getString("members");
+			for (String member : members.split(","))
+			{
+				final MemberDTO resource = new MemberDTO();
+				
+				final String[] values = member.split(":");
+				
+				// username
+				resource.setUsername(values[0]);
+				
+				// fullname
+				if (values.length > 1 && StringUtils.hasLength(values[1]))
+					resource.setFullname(values[1]);
+				else 
+					resource.setFullname(values[0]);
+				
+				if (!list.contains(resource))
+					list.add(resource);
+			}
 		}
-		
-		arrlist.add(resource);
+	}
+	
+	/**
+	 * 
+	 * @param aliasBO
+	 * @param element
+	 * @param params
+	 */
+	public static void aliasBuilder(String members,
+			final List<MemberDTO> list)
+	{
+		if (StringUtils.hasLength(members))
+		{
+			// get json object from request
+			final JSONObject json = JSONObject.fromObject("{items:" + members +"}");
+			
+			// attendee builder
+			final Object val = json.get("items");
+			if (val instanceof JSONArray)
+			{
+				int size = ((JSONArray)val).size();
+				for (int index = 0; index <  size; index++)
+				{
+					aliasBuilder(list, ((JSONArray)val).getJSONObject(index));
+				}
+			}
+			else if (val instanceof JSONObject) {
+				aliasBuilder(list, (JSONObject)val);
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * @param list
+	 * @param json
+	 */
+	public static void aliasBuilder(final List<MemberDTO> list, 
+			final JSONObject json)
+	{
+		if (json != null && 
+			json.has("username") &&
+			json.has("fullname"))
+		{
+			final MemberDTO member = new MemberDTO();
+			member.setFullname(json.getString("fullname"));
+			member.setUsername(json.getString("username"));
+			
+			if (!list.contains(member))
+				list.add(member);
+		}
 	}
 }

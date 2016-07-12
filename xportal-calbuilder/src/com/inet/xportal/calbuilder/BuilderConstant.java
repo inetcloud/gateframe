@@ -24,5 +24,6 @@ package com.inet.xportal.calbuilder;
  * @since 1.0
  */
 public interface BuilderConstant {
-	public static final String ROLE_CALBUILDER = "$calbuilder";
+	public static final String CALENDAR_FIRM_REVIEWER = "$calendar_firm_reviewer";
+	public static final String CALENDAR_REVIEWER = "$calendar_reviewer";
 }

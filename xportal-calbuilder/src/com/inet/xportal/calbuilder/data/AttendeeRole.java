@@ -24,7 +24,8 @@ package com.inet.xportal.calbuilder.data;
  * @since 1.0
  */
 public enum AttendeeRole {
-	MEMBER,
+	CREATOR,
 	CHAIRMAN,
+	MEMBER,
 	OBSERVER
 }

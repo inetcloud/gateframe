@@ -13,49 +13,53 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  *****************************************************************/
-package com.inet.xportal.calbuilder.admservice;
+package com.inet.xportal.calbuilder.cmmservice;
 
 import java.util.Map;
 
-import javax.inject.Inject;
 import javax.inject.Named;
 
-import com.inet.xportal.calbuilder.bo.CalDeptBO;
-import com.inet.xportal.calbuilder.model.CalDept;
-import com.inet.xportal.nosql.web.data.SearchDTO;
+import com.inet.xportal.calbuilder.dataservice.CalElementAbstraction;
+import com.inet.xportal.calbuilder.model.CalElement;
+import com.inet.xportal.nosql.web.data.FirmProfileDTO;
 import com.inet.xportal.web.WebConstant;
 import com.inet.xportal.web.action.AbstractBaseAction;
 import com.inet.xportal.web.annotation.XPortalDataService;
 import com.inet.xportal.web.annotation.XPortalPageRequest;
 import com.inet.xportal.web.exception.WebOSBOException;
-import com.inet.xportal.web.interfaces.DataServiceMarker;
 import com.inet.xportal.web.interfaces.ObjectWebDataservice;
 import com.inet.xportal.web.interfaces.WebDataService;
 
 
 /**
  * 
- * CalDepartmentDataservice.
+ * CalElementCreateDataservice.
  *
  * @author Hien Nguyen
- * @version $Id: CalDepartmentDataservice.java Apr 27, 2015 10:01:46 AM nguyen_dv $
+ * @version $Id: CalElementCreateDataservice.java Jul 12, 2016 9:01:17 AM nguyen_dv $
  *
  * @since 1.0
  */
-@Named("caldepartmentquery")
-@XPortalDataService(roles={WebConstant.ROLE_ADMIN}, description = "CalDepartment service")
-@XPortalPageRequest(uri = "caldepartment/query",
+@Named("calbuilderelementcreate")
+@XPortalDataService(roles={WebConstant.ROLE_COMMUNITY}, description = "CalDepartment service")
+@XPortalPageRequest(uri = "calbuilder/element/create",
+	inherit = true,
+	transaction = true,
 	result = WebConstant.ACTION_XSTREAM_JSON_RESULT)
-public class CalDepartmentDataservice extends  DataServiceMarker {
-	@Inject
-	private CalDeptBO deptBO;
-	
+public class CalElementCreateDataservice extends CalElementAbstraction {
 	/*
-	 * 
+	 * (non-Javadoc)
+	 * @see com.inet.xportal.calbuilder.dataservice.CalBaseAbstraction#service(com.inet.xportal.nosql.web.data.FirmProfileDTO, com.inet.xportal.web.action.AbstractBaseAction, java.util.Map)
 	 */
 	@Override
-    protected WebDataService service(final AbstractBaseAction action, 
+    protected WebDataService service(final FirmProfileDTO subfirm,
+    		final AbstractBaseAction action, 
     		final Map<String, Object> params) throws WebOSBOException {
-		return new ObjectWebDataservice<SearchDTO<CalDept>>(deptBO.query());
+		final CalElement element = elementBuilder(subfirm, action, params);
+		
+		String uuid = elementBO.add(element);
+		element.setUuid(uuid);
+		
+		return new ObjectWebDataservice<CalElement>(element);
     }
 }
